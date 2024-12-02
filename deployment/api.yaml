@@ -1,0 +1,171 @@
+openapi: 3.0.1
+info:
+  title: Self-Storage Solution API
+  description: API for managing self-storage units and rentals.
+  version: 1.0.0
+
+components:
+  securitySchemes:
+    CognitoAuthorizer:
+      type: apiKey
+      name: Authorization
+      in: header
+      x-amazon-apigateway-authtype: cognito_user_pools
+      x-amazon-apigateway-authorizer:
+        providerARNs:
+          - Fn::Sub: arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPool}
+        type: cognito_user_pools
+
+paths:
+  /units:
+    get:
+      summary: List available storage units
+      security:
+        - CognitoAuthorizer: []
+      parameters:
+        - name: facility_id
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: 
+              - Available
+              - Reserved
+              - Cancelling
+              - Problem
+              - Unavailable
+      responses:
+        '200':
+          description: Successful response
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    unitId:
+                      type: string
+                    facilityId:
+                      type: string
+                    size:
+                      type: string
+                    status:
+                      type: string
+                    pricePerDay:
+                      type: number
+      x-amazon-apigateway-integration:
+        httpMethod: "POST"
+        uri: 
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListUnitsFunction.Arn}/invocations"
+        type: "aws_proxy"
+
+  /units/book:
+    post:
+      summary: Book a storage unit
+      security:
+        - CognitoAuthorizer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                unitId:
+                  type: string
+                facilityId:
+                  type: string
+                startDate:
+                  type: string
+                  format: date
+                endDate:
+                  type: string
+                  format: date
+                  nullable: true
+      responses:
+        '201':
+          description: Unit successfully booked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rentalId:
+                    type: string
+                  status:
+                    type: string
+      x-amazon-apigateway-integration:
+        httpMethod: "POST"
+        uri: 
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${BookUnitFunction.Arn}/invocations"
+        type: "aws_proxy"
+
+  /rentals/cancel:
+    post:
+      summary: Cancel a rental
+      security:
+        - CognitoAuthorizer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rentalId:
+                  type: string
+                reason:
+                  type: string
+                  nullable: true
+      responses:
+        '200':
+          description: Rental successfully cancelled
+      x-amazon-apigateway-integration:
+        httpMethod: "POST"
+        uri: 
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CancelRentalFunction.Arn}/invocations"
+        type: "aws_proxy"
+
+  /rentals/share-access:
+    post:
+      summary: Share unit access with another user
+      security:
+        - CognitoAuthorizer: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                rentalId:
+                  type: string
+                recipientEmail:
+                  type: string
+                startDate:
+                  type: string
+                  format: date
+                endDate:
+                  type: string
+                  format: date
+                  nullable: true
+      responses:
+        '200':
+          description: Access shared successfully
+      x-amazon-apigateway-integration:
+        httpMethod: "POST"
+        uri: 
+          Fn::Sub: "arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ShareAccessFunction.Arn}/invocations"
+        type: "aws_proxy
+
+
+x-amazon-apigateway-request-validators:
+  Validate body:
+    validateRequestParameters: false
+    validateRequestBody: true

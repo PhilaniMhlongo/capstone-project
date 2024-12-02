@@ -528,7 +528,7 @@ Resources:
       CodeUri: backend/src/payments/
       Handler: payment_reminder.lambda_handler
       Policies:
-        # - SESCrudPolicy: {}
+        - SESCrudPolicy: {}
         - DynamoDBReadPolicy:
             TableName: !Ref RentalsTable
       Environment:
