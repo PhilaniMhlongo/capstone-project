@@ -1,0 +1,32 @@
+APIEndpoint:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${RestAPI}.execute-api.${AWS::Region}.amazonaws.com/Prod"
+
+
+Key                 APIEndpoint                                                                      
+Description         API Gateway endpoint URL                                                         
+Value               https://g9fa57dw88.execute-api.eu-west-1.amazonaws.com/Prod      
+
+
+
+Key                 CognitoLoginURL                                                                  
+Description         Cognito User Pool Application Client Hosted Login UI URL                         
+Value               https://1560lns5rp8b2rvh3srh6icllb.auth.eu-west-1.amazoncognito.com/login?client_id=1560lns5rp8b2rvh3srh6icllb&response_type=code&redirect_uri=http://localhost
+
+
+Password: .^xq?JRV8cbC6sm
+
+
+CognitoAuthCommand:
+    Description: AWS CLI command for Amazon Cognito User Pool authentication
+    Value: !Sub |
+      aws cognito-idp initiate-auth --auth-flow USER_PASSWORD_AUTH --client-id ${UserPoolClient} --auth-parameters USERNAME=<username>,PASSWORD=<password> --query "AuthenticationResult.IdToken" --output text
+
+
+Description: >
+  Self-Storage Solution Serverless Backend-users
+
+
+Key                 APIEndpoint                                                                      
+Description         API Gateway endpoint URL                                                         
+Value               https://g9fa57dw88.execute-api.eu-west-1.amazonaws.com/Prod                      
