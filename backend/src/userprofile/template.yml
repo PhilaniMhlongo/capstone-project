@@ -1,0 +1,53 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description:  Self-Storage Solution Serverless Backend Asynchronous Pattern with EventBridge and SQS
+
+Parameters:
+  UserPool:
+    Type: String
+    Description: User Pool
+  Service:
+    Type: String
+    Default: userprofile
+  Stage:
+    Type: String
+    Default: prod
+# More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
+Globals:
+  Function:
+    Timeout: 20
+    Tracing: Active
+    Layers:
+      - !Sub arn:aws:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPython:20
+  Api:
+    TracingEnabled: true
+
+Resources:
+  UserAddressesTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${AWS::StackName}-AddressTable
+      AttributeDefinitions:
+        - AttributeName: "user_id"
+          AttributeType: "S"
+        - AttributeName: "address_id"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "user_id"
+          KeyType: "HASH"
+        - AttributeName: "address_id"
+          KeyType: "RANGE"
+      BillingMode: PAY_PER_REQUEST
+
+  AddressBus:
+    Type: AWS::Events::EventBus
+    Properties:
+      Name: !Sub "Address-${AWS::StackName}"
+  
+Outputs:
+  AddressBus:
+      Description: "Address Event Bus"
+      Value: !Ref AddressBus
+  AddressTable:
+    Description: "DynamoDB User Address Table"
+    Value: !Ref UserAddressesTable
