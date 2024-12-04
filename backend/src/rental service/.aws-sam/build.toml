@@ -9,4 +9,11 @@ manifest_hash = ""
 packagetype = "Zip"
 functions = ["CreateRentalFunction"]
 
-[layer_build_definitions]
+[layer_build_definitions.fe198679-310a-4f49-9c1b-96329eb2e8a1]
+layer_name = "PyUtils"
+codeuri = "/home/wtc1/Videos/capstone-project/backend/src/rental service/layers"
+build_method = "python3.9"
+compatible_runtimes = ["python3.9"]
+architecture = "x86_64"
+manifest_hash = ""
+layer = "PyUtils"

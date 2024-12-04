@@ -11,6 +11,18 @@ Parameters:
     Type: String
     Description: User Pool ID produced by the Users module
 Resources:
+  PyUtils:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+      LayerName: pyutils
+      Description: Shared utilities for Orders service
+      ContentUri: PyUtils
+      CompatibleRuntimes:
+      - python3.9
+      RetentionPolicy: Delete
+    Metadata:
+      BuildMethod: python3.9
+      SamResourceId: PyUtils
   RentalsTable:
     Type: AWS::DynamoDB::Table
     Properties:

@@ -4,6 +4,15 @@ info:
   version: 2022-07-12T06:04:43Z
 paths:
   /rentals:
+    get:
+      security:
+        - CognitoAuthorizer: []
+      x-amazon-apigateway-integration:
+        httpMethod: "POST"
+        uri: 
+          Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListUserRentFunction.Arn}/invocations'
+        passthroughBehavior: "when_no_match"
+        type: "aws_proxy"
     post:
       summary: Create a new rental.
       parameters:

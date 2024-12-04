@@ -182,9 +182,34 @@ Resources:
           Name: AWS::Include
           Parameters:
             Location: ../../api.yaml
+  ListUserRentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ListUserRentFunction
+      Handler: listRental.lambda_handler
+      Runtime: python3.9
+      Policies:
+        DynamoDBReadPolicy:
+          TableName:
+            Ref: UserUnitTable
+      Environment:
+        Variables:
+          TABLE_NAME:
+            Ref: UserUnitTable
+    Metadata:
+      SamResourceId: ListUserRentFunction
+  ListUserRentPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: ListUserRentFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub: arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ProfileApiGateway}/*/GET/rentals
 Outputs:
   UnitBus:
-    Description: Rent Unit Event Bus
+    Description: Rent Unit Event Bus Output
     Value:
       Ref: UnitBus
   UnitTable:

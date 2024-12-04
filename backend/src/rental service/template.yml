@@ -13,6 +13,17 @@ Parameters:
     Description: User Pool ID produced by the Users module
    
 Resources: 
+  PyUtils:
+    Type: AWS::Serverless::LayerVersion
+    Properties:
+        LayerName: pyutils
+        Description: Shared utilities for Orders service 
+        ContentUri: layers/
+        CompatibleRuntimes:
+          - python3.9
+        RetentionPolicy: Delete
+    Metadata:
+      BuildMethod: python3.9
   RentalsTable:  # Creates the DynamoDB table with userId and orderId as the keys
     Type: AWS::DynamoDB::Table
     Properties:
