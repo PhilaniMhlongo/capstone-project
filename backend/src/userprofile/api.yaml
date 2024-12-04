@@ -1,0 +1,226 @@
+openapi: 3.0.1
+info:
+  title: rentals-service
+  version: 2022-07-12T06:04:43Z
+paths:
+  /rentals:
+    post:
+      summary: Create a new rental.
+      parameters:
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+        - name: X-Amz-Target
+          in: header
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RentalInputModel"
+      responses:
+        "201":
+          description: Successfully created the rental.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RentalResponse"
+      security:
+        - CognitoAuthorizer: []
+      x-amazon-apigateway-request-validator: ValidateBody
+      x-amazon-apigateway-integration:
+        credentials:
+          Fn::Sub: ${ApiGatewayEventBridgeRole.Arn}
+        httpMethod: POST
+        uri: arn:aws:apigateway:${AWS::Region}:events:action/PutEvents
+        passthroughBehavior: when_no_templates
+        type: aws
+        requestTemplates:
+          application/json:
+            Fn::Sub: >
+              #set($context.requestOverride.header.X-Amz-Target = "AWSEvents.PutEvents")
+              #set($context.requestOverride.header.Content-Type = "application/x-amz-json-1.1")
+              {
+                "Entries": [
+                  {
+                    "Detail": "{\"unitId\": \"$input.path('$.unitId')\", \"customerId\": \"$input.path('$.customerId')\", \"rentalStatus\": \"$input.path('$.rentalStatus')\", \"startDate\": \"$input.path('$.startDate')\", \"userId\": \"$context.authorizer.claims.sub\"}",
+                    "DetailType": "rental.created",
+                    "EventBusName": "${UnitBus.Name}",
+                    "Source": "rentals-service"
+                  }
+                ]
+              }
+        responses:
+          default:
+            statusCode: "201"
+            responseTemplates:
+              application/json: "{}"
+
+  /rentals/{rentalId}:
+    get:
+      summary: Retrieve rental details by rental ID.
+      parameters:
+        - name: rentalId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+        - name: X-Amz-Target
+          in: header
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Successfully retrieved the rental details.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RentalResponse"
+      security:
+        - CognitoAuthorizer: []
+      x-amazon-apigateway-integration:
+        credentials:
+          Fn::Sub: "${ApiGatewayEventBridgeRole.Arn}"
+        httpMethod: POST
+        uri: "arn:aws:apigateway:${AWS::Region}:events:action/PutEvents"
+        passthroughBehavior: when_no_templates
+        type: aws
+        requestTemplates:
+          application/json:
+            Fn::Sub: >
+              {
+                "TableName": "RentalsTable",
+                "Key": {
+                  "RentalId": {"S": "$input.params('rentalId')"}
+                }
+              }
+        responses:
+          default:
+            statusCode: "200"
+            responseTemplates:
+              application/json: "$input.path('$.Item')"
+
+  /rentals/{rentalId}/status:
+    put:
+      summary: Update the status of a rental.
+      parameters:
+        - name: rentalId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+        - name: X-Amz-Target
+          in: header
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RentalStatusUpdateModel"
+      responses:
+        "200":
+          description: Successfully updated the rental status.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RentalResponse"
+      security:
+        - CognitoAuthorizer: []
+      x-amazon-apigateway-integration:
+        credentials:
+          Fn::Sub: ${ApiGatewayEventBridgeRole.Arn}
+        httpMethod: POST
+        uri: arn:aws:apigateway:${AWS::Region}:events:action/PutEvents
+        passthroughBehavior: when_no_templates
+        type: aws
+        requestTemplates:
+          application/json:
+            Fn::Sub: >
+              #set($context.requestOverride.header.X-Amz-Target = "AWSEvents.PutEvents")
+              #set($context.requestOverride.header.Content-Type = "application/x-amz-json-1.1")
+              {
+                "Entries": [
+                  {
+                    "Detail": "{\"rentalId\": \"$input.params('rentalId')\", \"rentalStatus\": \"$input.path('$.rentalStatus')\", \"userId\": \"$context.authorizer.claims.sub\"}",
+                    "DetailType": "rental.status.updated",
+                    "EventBusName": "${UnitBus.Name}",
+                    "Source": "rentals-service"
+                  }
+                ]
+              }
+        responses:
+          default:
+            statusCode: "200"
+            responseTemplates:
+              application/json: "{}"
+
+components:
+  schemas:
+    RentalInputModel:
+      type: object
+      required:
+        - unitId
+        - customerId
+        - rentalStatus
+        - startDate
+      properties:
+        unitId:
+          type: string
+        customerId:
+          type: string
+        rentalStatus:
+          type: string
+          enum: [Available, Reserved, Cancelling, Problem, Unavailable]
+        startDate:
+          type: string
+          format: date-time
+    RentalStatusUpdateModel:
+      type: object
+      required:
+        - rentalStatus
+      properties:
+        rentalStatus:
+          type: string
+          enum: [Available, Reserved, Cancelling, Problem, Unavailable]
+    RentalResponse:
+      type: object
+      properties:
+        rentalId:
+          type: string
+        unitId:
+          type: string
+        customerId:
+          type: string
+        rentalStatus:
+          type: string
+        startDate:
+          type: string
+          format: date-time
+    Empty:
+      type: object
+  securitySchemes:
+    CognitoAuthorizer:
+      type: apiKey
+      name: Authorization
+      in: header
+      x-amazon-apigateway-authtype: cognito_user_pools
+      x-amazon-apigateway-authorizer:
+        providerARNs:
+          - Fn::Sub: arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPool}
+        type: cognito_user_pools
+
+x-amazon-apigateway-request-validators:
+  ValidateBody:
+    validateRequestParameters: false
+    validateRequestBody: true

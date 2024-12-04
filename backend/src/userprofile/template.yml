@@ -1,6 +1,6 @@
 AWSTemplateFormatVersion: '2010-09-09'
 Transform: AWS::Serverless-2016-10-31
-Description:  Self-Storage Solution Serverless Backend Asynchronous Pattern with EventBridge and SQS
+Description: Self-Storage Solution Serverless Backend Asynchronous Pattern with EventBridge and SQS
 
 Parameters:
   UserPool:
@@ -12,6 +12,7 @@ Parameters:
   Stage:
     Type: String
     Default: prod
+
 # More info about Globals: https://github.com/awslabs/serverless-application-model/blob/master/docs/globals.rst
 Globals:
   Function:
@@ -23,31 +24,159 @@ Globals:
     TracingEnabled: true
 
 Resources:
-  UserAddressesTable:
+  UserUnitTable:
     Type: AWS::DynamoDB::Table
     Properties:
-      TableName: !Sub ${AWS::StackName}-AddressTable
+      TableName: !Sub ${AWS::StackName}-UnitTable
       AttributeDefinitions:
         - AttributeName: "user_id"
           AttributeType: "S"
-        - AttributeName: "address_id"
+        - AttributeName: "unit_id"
           AttributeType: "S"
       KeySchema:
         - AttributeName: "user_id"
           KeyType: "HASH"
-        - AttributeName: "address_id"
+        - AttributeName: "unit_id"
           KeyType: "RANGE"
       BillingMode: PAY_PER_REQUEST
 
-  AddressBus:
+  AddUserRentUnitFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: api/rent
+      Handler: createRental.lambda_handler
+      Runtime: python3.9
+      Tracing: Active
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UserUnitTable
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref UserUnitTable
+      Events:
+        Trigger:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref UnitBus
+            Pattern:
+              source:
+                - rentals-service
+              detail-type:
+                - rental.created
+
+  EditUserRentalFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: api/rent
+      Handler: editStatus.lambda_handler
+      Runtime: python3.9
+      Tracing: Active
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UserUnitTable
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref UserUnitTable
+      # POWERTOOLS_SERVICE_NAME: serverless-workshop
+      Events:
+        Trigger:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref UnitBus
+            Pattern:
+              source:
+                - rentals-service
+              detail-type:
+                - rental.status.updated
+
+  CancelUserRentalFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: api/rent
+      Handler: cancelRental.lambda_handler
+      Runtime: python3.9
+      Tracing: Active
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UserUnitTable
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref UserUnitTable
+      # POWERTOOLS_SERVICE_NAME: serverless-workshop
+      Events:
+        Trigger:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref UnitBus
+            Pattern:
+              source:
+                - rentals-service
+              detail-type:
+                - rental.canceled
+
+  UnitBus:
     Type: AWS::Events::EventBus
     Properties:
       Name: !Sub "Address-${AWS::StackName}"
+
+  ApiGatewayEventBridgeRole:
+    Type: AWS::IAM::Role
+    Properties:
+      Path: !Join ["", ["/", !Ref "AWS::StackName", "/"]]
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Sid: AllowApiGatewayServiceToAssumeRole
+            Effect: Allow
+            Action:
+              - 'sts:AssumeRole'
+            Principal:
+              Service:
+                - apigateway.amazonaws.com
+      Policies:
+        - PolicyName: EBPutEvents
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - 'events:PutEvents'
+                Resource:
+                  - !GetAtt UnitBus.Arn
   
+  ProfileApiGateway:
+    Type: AWS::Serverless::Api
+    DependsOn:
+    - ApiGatewayEventBridgeRole
+
+    Properties:
+      StageName: !Ref Stage
+      Auth:
+        DefaultAuthorizer: MyCognitoAuthorizer
+        Authorizers:
+          MyCognitoAuthorizer:
+            UserPoolArn: !Sub arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPool}
+      EndpointConfiguration:
+        Type: REGIONAL
+      TracingEnabled: true
+      MethodSettings:
+        - LoggingLevel: INFO
+          ResourcePath: '/*' # allows for logging on any resource
+          HttpMethod: '*' # allows for logging on any method
+      DefinitionBody:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+              Location: api.yaml
+
 Outputs:
-  AddressBus:
-      Description: "Address Event Bus"
-      Value: !Ref AddressBus
-  AddressTable:
-    Description: "DynamoDB User Address Table"
-    Value: !Ref UserAddressesTable
+  UnitBus:
+    Description: "Rent Unit Event Bus"
+    Value: !Ref UnitBus
+  UnitTable:
+    Description: "DynamoDB User Unit Table"
+    Value: !Ref UserUnitTable
+
+  ProfileApiEndpoint:
+    Description: "API Gateway endpoint URL"
+    Value: !Sub "https://${ProfileApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Stage}/"
