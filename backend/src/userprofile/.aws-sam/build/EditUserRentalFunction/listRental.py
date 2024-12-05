@@ -64,13 +64,13 @@ def lambda_handler(event, context):
             }
         }
 
-    except Exception as e:
-        logger.error(f"Error listing rentals: {e}")
-        return {
-            'statusCode': 500,
-            'body': json.dumps({'error': 'Internal server error'}),
-            'headers': {
-                'Content-Type': 'application/json',
-                'Access-Control-Allow-Origin': '*'
-            }
-        }
+    # except Exception as e:
+    #     logger.error(f"Error listing rentals: {e}")
+    #     return {
+    #         'statusCode': 500,
+    #         'body': json.dumps({'error': 'Internal server error'}),
+    #         'headers': {
+    #             'Content-Type': 'application/json',
+    #             'Access-Control-Allow-Origin': '*'
+    #         }
+    #     }

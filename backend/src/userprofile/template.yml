@@ -182,6 +182,7 @@ Resources:
       Environment:
         Variables:
           TABLE_NAME: !Ref UserUnitTable
+      
 
   ListUserRentPermission:
     Type: AWS::Lambda::Permission
@@ -201,4 +202,4 @@ Outputs:
 
   ProfileApiEndpoint:
     Description: "API Gateway endpoint URL"
-    Value: !Sub "https://${ProfileApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Prod}/"
+    Value: !Sub "https://${ProfileApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Stage}/"
