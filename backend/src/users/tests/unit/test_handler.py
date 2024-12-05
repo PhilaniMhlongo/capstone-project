@@ -154,3 +154,55 @@ def test_delete_user():
         assert ret['statusCode'] == 200
         assert json.loads(ret['body']) == {}
 # Add your unit testing code here
+
+def test_create_storage_unit():
+    with my_test_environment():
+        from api import storage_units
+        with open('./events/event-create-storage-unit.json', 'r') as f:
+            apigw_event = json.load(f)
+        expected_response = {
+            'unitid': 'new-unit-id',
+            'facility': 'Downtown Storage',
+            'type': 'Large',
+            'status': 'Available'
+        }
+        ret = storage_units.lambda_handler(apigw_event, '')
+        assert ret['statusCode'] == 200
+        data = json.loads(ret['body'])
+        assert data == expected_response
+
+def test_list_storage_units_by_facility():
+    with my_test_environment():
+        from api import storage_units
+        with open('./events/event-list-storage-units.json', 'r') as f:
+            apigw_event = json.load(f)
+        expected_response = [
+            {'unitid': 'unit-1', 'facility': 'Downtown Storage', 'type': 'Small', 'status': 'Available'},
+            {'unitid': 'unit-2', 'facility': 'Downtown Storage', 'type': 'Large', 'status': 'Unavailable'}
+        ]
+        ret = storage_units.lambda_handler(apigw_event, '')
+        assert ret['statusCode'] == 200
+        data = json.loads(ret['body'])
+        assert data == expected_response
+
+def test_update_unit_status():
+    with my_test_environment():
+        from api import storage_units
+        with open('./events/event-update-unit-status.json', 'r') as f:
+            apigw_event = json.load(f)
+        expected_response = {'message': 'Status updated successfully'}
+        ret = storage_units.lambda_handler(apigw_event, '')
+        assert ret['statusCode'] == 200
+        data = json.loads(ret['body'])
+        assert data == expected_response
+
+def test_cancel_rental():
+    with my_test_environment():
+        from api import rentals
+        with open('./events/event-cancel-rental.json', 'r') as f:
+            apigw_event = json.load(f)
+        expected_response = {'message': 'Rental cancellation initiated'}
+        ret = rentals.lambda_handler(apigw_event, '')
+        assert ret['statusCode'] == 200
+        data = json.loads(ret['body'])
+        assert data == expected_response
