@@ -21,12 +21,12 @@ def book_storage_unit(event, context):
     """
     logger.info("Booking storage unit")
     
-    detail = json.loads(event['body'])
+    detail = event['detail']
     user_id = event['requestContext']['authorizer']['claims']['sub']
     
     unit_id = detail['unit_id']
-    rental_duration = detail.get('duration', 'indefinite')
-    billing_option = detail.get('billingOption', 'monthly')
+    rental_duration = detail['duration']
+    billing_option = detail['billingOption']
     
     # Check unit availability
     unit_response = units_table.get_item(
@@ -65,19 +65,28 @@ def book_storage_unit(event, context):
             'start_date': start_date.isoformat(),
             'end_date': end_date.isoformat() if end_date else None,
             'billing_option': billing_option,
-            'status': 'Active'
+            'status': 'Reserved'
         }
     )
     
-    # Update unit status
-    units_table.update_item(
-        Key={'unit_id': unit_id},
-        UpdateExpression='SET status = :status',
-        ExpressionAttributeValues={
-            ':status': 'Reserved'
-        }
+        # Update unit status
+    key = {"unit_id": {"S": unit_id}}  # Replace with actual unit_id
+
+    # Update Expression
+    update_expression = "SET #status = :status_val"
+    expression_attribute_names = {"#status": "status"}  # Dynamically reference the 'status' attribute
+    expression_attribute_values = {":status_val": {"S": "occupied"}}  # New value for 'status'
+
+    # Update the item
+    dynamodb.update_item(
+        TableName=storage_units_table,
+        Key=key,
+        UpdateExpression=update_expression,
+        ExpressionAttributeNames=expression_attribute_names,
+        ExpressionAttributeValues=expression_attribute_values,
+        ReturnValues="UPDATED_NEW"
     )
-    
+        
     logger.info(f"Storage unit {unit_id} booked by user {user_id}")
     
     return {
@@ -88,13 +97,7 @@ def book_storage_unit(event, context):
         })
     }
 
-@tracer.capture_lambda_handler
+
 def lambda_handler(event, context):
-    try:
-        return book_storage_unit(event, context)
-    except Exception as err:
-        logger.exception(err)
-        return {
-            "statusCode": 500,
-            "body": json.dumps({"error": str(err)})
-        }
+    return book_storage_unit(event, context)
+  

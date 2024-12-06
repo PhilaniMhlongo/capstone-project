@@ -1,0 +1,14 @@
+{
+    "detail": {
+      "unit_id": "unit123",
+      "duration": "1month",
+      "billingOption": "monthly"
+    },
+    "requestContext": {
+      "authorizer": {
+        "claims": {
+          "sub": "52950484-50c1-704b-3f81-769bd501e0c1"
+        }
+      }
+    }
+  }
