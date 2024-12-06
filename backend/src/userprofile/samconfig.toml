@@ -1,9 +1,0 @@
-version = 0.1
-[default.deploy.parameters]
-stack_name = "Self-Storage-Solution-userprofile"
-resolve_s3 = true
-s3_prefix = "Self-Storage-Solution-userprofile"
-region = "eu-west-1"
-capabilities = "CAPABILITY_IAM"
-parameter_overrides = "UserPool=\"eu-west-1_GpjXkqzK8\" Service=\"userprofile\" Stage=\"prod\""
-image_repositories = []

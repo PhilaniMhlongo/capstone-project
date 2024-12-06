@@ -1,2 +1,4 @@
 venv
 endpoint.txt
+backend/src/users/.aws-sam/
+backend/src/units/.aws-sam/
