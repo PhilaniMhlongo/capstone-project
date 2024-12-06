@@ -67,6 +67,70 @@ paths:
             responseTemplates:
               application/json: "{}"
 
+  /book-unit:
+    post:
+      security:
+        - CognitoAuthorizer: []
+      x-amazon-apigateway-integration:
+        httpMethod: "POST"
+        uri: 
+          Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${BookStorageUnitFunction.Arn}/invocations'
+        passthroughBehavior: "when_no_match"
+        type: "aws_proxy"
+    post:
+      summary: Book a storage unit.
+      parameters:
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+        - name: X-Amz-Target
+          in: header
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StorageUnitBookingInput"
+      responses:
+        "201":
+          description: Successfully booked the storage unit.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageUnitBookingResponse"
+      security:
+        - CognitoAuthorizer: []
+      x-amazon-apigateway-request-validator: ValidateBody
+      x-amazon-apigateway-integration:
+        credentials:
+          Fn::Sub: ${ApiGatewayEventBridgeRole.Arn}
+        httpMethod: POST
+        uri: arn:aws:apigateway:${AWS::Region}:events:action/PutEvents
+        passthroughBehavior: when_no_templates
+        type: aws
+        requestTemplates:
+          application/json:
+            Fn::Sub: >
+              #set($context.requestOverride.header.X-Amz-Target = "AWSEvents.PutEvents")
+              #set($context.requestOverride.header.Content-Type = "application/x-amz-json-1.1")
+              {
+                "Entries": [
+                  {
+                    "Detail": "{\"unitId\": \"$input.path('$.unit_id')\", \"customerId\": \"$context.authorizer.claims.sub\", \"duration\": \"$input.path('$.duration')\", \"billingOption\": \"$input.path('$.billingOption')\", \"startDate\": \"$input.path('$.start_date')\"}", 
+                    "DetailType": "storage.unit.booked",
+                    "EventBusName": "${UnitBus.Name}",
+                    "Source": "storage-service"
+                  }
+                ]
+              }
+        responses:
+          default:
+            statusCode: "201"
+            responseTemplates:
+              application/json: "{}"
+
   /rentals/{rentalId}:
     get:
       summary: Retrieve rental details by rental ID.
@@ -176,6 +240,50 @@ paths:
 
 components:
   schemas:
+    StorageUnitBookingInput:
+      type: object
+      required:
+        - unit_id
+      properties:
+        unit_id:
+          type: string
+          description: Unique identifier of the storage unit
+        duration:
+          type: string
+          enum: 
+            - 1day
+            - 1month
+            - 6months
+            - 1year
+            - indefinite
+          default: indefinite
+          description: Rental duration
+        billingOption:
+          type: string
+          enum: 
+            - monthly
+            - quarterly
+            - yearly
+          default: monthly
+          description: Billing frequency
+
+    StorageUnitBookingResponse:
+      type: object
+      properties:
+        rental_id:
+          type: string
+          description: Unique identifier for the rental
+        unit_id:
+          type: string
+          description: Identifier of the booked storage unit
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Description of the error
+   
     RentalInputModel:
       type: object
       required:

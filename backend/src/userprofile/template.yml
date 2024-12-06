@@ -24,6 +24,76 @@ Globals:
     TracingEnabled: true
 
 Resources:
+  StorageUnitsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${AWS::StackName}-StorageUnitsTable
+      AttributeDefinitions:
+        - AttributeName: "unit_id"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "unit_id"
+          KeyType: "HASH"
+      BillingMode: PAY_PER_REQUEST
+
+  RentalsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${AWS::StackName}-RentalsTable
+      AttributeDefinitions:
+        - AttributeName: "rental_id"
+          AttributeType: "S"
+        - AttributeName: "unit_id"
+          AttributeType: "S"
+        - AttributeName: "user_id"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "rental_id"
+          KeyType: "HASH"
+      GlobalSecondaryIndexes:
+        - IndexName: UnitIndex
+          KeySchema:
+            - AttributeName: "unit_id"
+              KeyType: "HASH"
+          Projection:
+            ProjectionType: ALL
+        - IndexName: UserIndex
+          KeySchema:
+            - AttributeName: "user_id"
+              KeyType: "HASH"
+          Projection:
+            ProjectionType: ALL
+      BillingMode: PAY_PER_REQUEST
+
+  BookStorageUnitFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: api/rent
+      Handler: book_storage_unit.lambda_handler
+      Runtime: python3.9
+      Tracing: Active
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref StorageUnitsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RentalsTable
+      Environment:
+        Variables:
+          STORAGE_UNITS_TABLE: !Ref StorageUnitsTable
+          RENTALS_TABLE: !Ref RentalsTable
+      Events:
+        Trigger:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref UnitBus
+            Pattern:
+              source:
+                - rentals-service
+              detail-type:
+                - storage.unit.booked
+
+
+
   UserUnitTable:
     Type: AWS::DynamoDB::Table
     Properties:
