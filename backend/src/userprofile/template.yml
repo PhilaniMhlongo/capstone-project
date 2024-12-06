@@ -92,7 +92,6 @@ Resources:
               detail-type:
                 - storage.unit.booked
 
-<<<<<<< HEAD
   # manage storage unit
   AccessLogTable:
     Type: AWS::DynamoDB::Table
@@ -162,8 +161,6 @@ Resources:
             Path: /units/{unitId}/access
             Method: post
             RestApiId: !Ref ProfileApiGateway
-=======
->>>>>>> 4201571 (including changes for rebase)
 
 
   UserUnitTable:
@@ -342,7 +339,6 @@ Outputs:
     Description: "DynamoDB User Unit Table"
     Value: !Ref UserUnitTable
 
-<<<<<<< HEAD
   AccessLogTable:
     Description: "DynamoDB Access Log Table"
     Value: !Ref AccessLogTable
@@ -351,8 +347,6 @@ Outputs:
     Description: "SNS Topic for Unit Access Notifications"
     Value: !Ref UnitAccessNotificationTopic
 
-=======
->>>>>>> 4201571 (including changes for rebase)
   ProfileApiEndpoint:
     Description: "API Gateway endpoint URL"
     Value: !Sub "https://${ProfileApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Stage}/"

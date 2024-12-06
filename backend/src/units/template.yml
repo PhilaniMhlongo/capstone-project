@@ -1,0 +1,119 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: 'AWS::Serverless-2016-10-31'
+
+Parameters:
+  UserPool:
+    Type: String
+    Description: The Cognito User Pool ID for the Authorizer
+
+Resources:
+
+    RentalUnitsUserPool:
+      Type: AWS::Cognito::UserPool
+      Properties:
+        UserPoolName: RentalUnitsUserPool
+        Policies:
+          PasswordPolicy:
+            MinimumLength: 8
+            RequireUppercase: true
+            RequireLowercase: true
+            RequireNumbers: true
+            RequireSymbols: true
+        AutoVerifiedAttributes:
+          - email
+
+  # API Gateway to expose the Lambda functions
+  RentalUnitsApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: dev
+      Name: RentalUnitsAPI
+      Cors:
+        AllowOrigin:
+          - "*"
+        AllowMethods:
+          - POST
+          - DELETE
+        AllowHeaders:
+          - Content-Type
+          - Authorization
+      EndpointConfiguration: REGIONAL
+      Auth:
+        DefaultAuthorizer: CognitoAuthorizer
+        Authorizers:
+          CognitoAuthorizer:
+            UserPoolArn: !Sub arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPool}
+
+
+  # DynamoDB Table for Rental Units
+  RentalUnitsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: RentalUnits
+      AttributeDefinitions:
+        - AttributeName: unitId
+          AttributeType: S
+      KeySchema:
+        - AttributeName: unitId
+          KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+
+  # Lambda function to add a unit
+  AddUnitFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: api/
+      Handler: add_unit.lambda_handler
+      Runtime: python3.9
+      MemorySize: 128
+      Timeout: 10
+      Environment:
+        Variables:
+          RENTAL_UNITS_TABLE: !Ref RentalUnitsTable
+      Events:
+        AddUnitApi:
+          Type: Api
+          Properties:
+            Path: /units
+            Method: POST
+            RestApiId: !Ref RentalUnitsApi
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+  # Lambda function to delete a unit
+  DeleteUnitFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: api/
+      Handler: delete_unit.lambda_handler
+      Runtime: python3.9
+      Tracing: Active
+      MemorySize: 128
+      Timeout: 10
+      Environment:
+        Variables:
+          RENTAL_UNITS_TABLE: !Ref RentalUnitsTable
+      Events:
+        DeleteUnitApi:
+          Type: Api
+          Properties:
+            Path: /units/{unitId}
+            Method: DELETE
+            RestApiId: !Ref RentalUnitsApi
+            Auth:
+              Authorizer: CognitoAuthorizer
+
+Outputs:
+  AddUnitApiUrl:
+    Description: "URL for adding units"
+    Value: !Sub "https://${RentalUnitsApi}.execute-api.${AWS::Region}.amazonaws.com/dev/units"
+  
+  DeleteUnitApiUrl:
+    Description: "URL for deleting units"
+    Value: !Sub "https://${RentalUnitsApi}.execute-api.${AWS::Region}.amazonaws.com/dev/units/{unitId}"
+  
+  RentalUnitsTableName:
+    Description: "Rental Units DynamoDB Table Name"
+    Value: !Ref RentalUnitsTable

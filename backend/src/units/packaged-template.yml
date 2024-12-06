@@ -1,0 +1,97 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Resources:
+  RentalUnitsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: RentalUnits
+      AttributeDefinitions:
+      - AttributeName: unitId
+        AttributeType: S
+      KeySchema:
+      - AttributeName: unitId
+        KeyType: HASH
+      BillingMode: PAY_PER_REQUEST
+      StreamSpecification:
+        StreamViewType: NEW_AND_OLD_IMAGES
+    Metadata:
+      SamResourceId: RentalUnitsTable
+  AddUnitFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: s3://aws-sam-cli-managed-default-samclisourcebucket-u4uzmpqefzpq/3910bee009c809b66fd09604010a565f
+      Handler: add_unit.lambda_handler
+      Runtime: python3.9
+      MemorySize: 128
+      Timeout: 10
+      Environment:
+        Variables:
+          RENTAL_UNITS_TABLE:
+            Ref: RentalUnitsTable
+      Events:
+        AddUnitApi:
+          Type: Api
+          Properties:
+            Path: /units
+            Method: POST
+            RestApiId:
+              Ref: RentalUnitsApi
+            Auth:
+              Authorizer: CognitoAuthorizer
+    Metadata:
+      SamResourceId: AddUnitFunction
+  DeleteUnitFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: s3://aws-sam-cli-managed-default-samclisourcebucket-u4uzmpqefzpq/3910bee009c809b66fd09604010a565f
+      Handler: delete_unit.lambda_handler
+      Runtime: python3.9
+      Tracing: Active
+      MemorySize: 128
+      Timeout: 10
+      Environment:
+        Variables:
+          RENTAL_UNITS_TABLE:
+            Ref: RentalUnitsTable
+      Events:
+        DeleteUnitApi:
+          Type: Api
+          Properties:
+            Path: /units/{unitId}
+            Method: DELETE
+            RestApiId:
+              Ref: RentalUnitsApi
+            Auth:
+              Authorizer: CognitoAuthorizer
+    Metadata:
+      SamResourceId: DeleteUnitFunction
+  RentalUnitsApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      StageName: dev
+      Name: RentalUnitsAPI
+      Cors:
+        AllowOrigin:
+        - '*'
+        AllowMethods:
+        - POST
+        - DELETE
+        AllowHeaders:
+        - Content-Type
+        - Authorization
+      EndpointConfiguration: REGIONAL
+    Metadata:
+      SamResourceId: RentalUnitsApi
+Outputs:
+  AddUnitApiUrl:
+    Description: URL for adding units
+    Value:
+      Fn::Sub: https://${RentalUnitsApi}.execute-api.${AWS::Region}.amazonaws.com/dev/units
+  DeleteUnitApiUrl:
+    Description: URL for deleting units
+    Value:
+      Fn::Sub: https://${RentalUnitsApi}.execute-api.${AWS::Region}.amazonaws.com/dev/units/{unitId}
+  RentalUnitsTableName:
+    Description: Rental Units DynamoDB Table Name
+    Value:
+      Ref: RentalUnitsTable
