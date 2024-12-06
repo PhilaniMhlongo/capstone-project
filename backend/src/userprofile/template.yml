@@ -120,7 +120,7 @@ Resources:
   ManageStorageUnitFunction:
     Type: AWS::Serverless::Function
     Properties:
-      CodeUri: api/manage
+      CodeUri: api/rent
       Handler: manage_storage_unit.lambda_handler
       Runtime: python3.9
       Tracing: Active
@@ -346,7 +346,7 @@ Outputs:
   UnitAccessNotificationTopic:
     Description: "SNS Topic for Unit Access Notifications"
     Value: !Ref UnitAccessNotificationTopic
-    
+
   ProfileApiEndpoint:
     Description: "API Gateway endpoint URL"
     Value: !Sub "https://${ProfileApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Stage}/"

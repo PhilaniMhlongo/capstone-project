@@ -23,7 +23,7 @@ def update_unit_status(event, context):
     """
     logger.info("Updating storage unit status")
     
-    detail = json.loads(event['body'])
+    detail = event['detail']
     unit_id = detail['unit_id']
     new_status = detail['status']
     
@@ -56,7 +56,7 @@ def share_unit_access(event, context):
     """
     logger.info("Sharing storage unit access")
     
-    detail = json.loads(event['body'])
+    detail = event['detail']
     rental_id = detail['rental_id']
     shared_user_id = detail['shared_user_id']
     start_date = detail.get('start_date')

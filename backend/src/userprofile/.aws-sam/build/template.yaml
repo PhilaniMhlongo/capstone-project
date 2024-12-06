@@ -95,6 +95,84 @@ Resources:
               - storage.unit.booked
     Metadata:
       SamResourceId: BookStorageUnitFunction
+  AccessLogTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName:
+        Fn::Sub: ${AWS::StackName}-AccessLogTable
+      AttributeDefinitions:
+      - AttributeName: unit_id
+        AttributeType: S
+      - AttributeName: timestamp
+        AttributeType: S
+      KeySchema:
+      - AttributeName: unit_id
+        KeyType: HASH
+      - AttributeName: timestamp
+        KeyType: RANGE
+      BillingMode: PAY_PER_REQUEST
+  UnitAccessNotificationTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName:
+        Fn::Sub: ${AWS::StackName}-UnitAccessNotifications
+  ManageStorageUnitFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ManageStorageUnitFunction
+      Handler: manage_storage_unit.lambda_handler
+      Runtime: python3.9
+      Tracing: Active
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: StorageUnitsTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: RentalsTable
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: AccessLogTable
+      - Statement:
+        - Effect: Allow
+          Action:
+          - sns:Publish
+          Resource:
+            Ref: UnitAccessNotificationTopic
+      Environment:
+        Variables:
+          STORAGE_UNITS_TABLE:
+            Ref: StorageUnitsTable
+          RENTALS_TABLE:
+            Ref: RentalsTable
+          ACCESS_LOG_TABLE:
+            Ref: AccessLogTable
+          UNIT_ACCESS_NOTIFICATION_TOPIC:
+            Ref: UnitAccessNotificationTopic
+      Events:
+        UpdateUnitStatus:
+          Type: Api
+          Properties:
+            Path: /units/{unitId}/status
+            Method: put
+            RestApiId:
+              Ref: ProfileApiGateway
+        ShareUnitAccess:
+          Type: Api
+          Properties:
+            Path: /units/{unitId}/share
+            Method: post
+            RestApiId:
+              Ref: ProfileApiGateway
+        LogUnitAccess:
+          Type: Api
+          Properties:
+            Path: /units/{unitId}/access
+            Method: post
+            RestApiId:
+              Ref: ProfileApiGateway
+    Metadata:
+      SamResourceId: ManageStorageUnitFunction
   UserUnitTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -290,6 +368,14 @@ Outputs:
     Description: DynamoDB User Unit Table
     Value:
       Ref: UserUnitTable
+  AccessLogTable:
+    Description: DynamoDB Access Log Table
+    Value:
+      Ref: AccessLogTable
+  UnitAccessNotificationTopic:
+    Description: SNS Topic for Unit Access Notifications
+    Value:
+      Ref: UnitAccessNotificationTopic
   ProfileApiEndpoint:
     Description: API Gateway endpoint URL
     Value:
