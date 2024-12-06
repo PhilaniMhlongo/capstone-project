@@ -1,4 +1,4 @@
-#!/home/wtc1/Videos/capstone-project/venv/bin/python
+#!/home/rorisang/capstone-project/venv/bin/python3
 # -*- coding: utf-8 -*-
 import re
 import sys
