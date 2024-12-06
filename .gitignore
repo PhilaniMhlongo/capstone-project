@@ -1,4 +1,5 @@
-venv
+venv/
 endpoint.txt
 backend/src/users/.aws-sam/
 backend/src/units/.aws-sam/
+backend/src/userprofile/.aws-sam/
