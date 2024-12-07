@@ -67,16 +67,84 @@ paths:
             responseTemplates:
               application/json: "{}"
 
-  /book-unit:
+  /units:
     post:
+      summary: Create a new storage unit (Admin only)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/StorageUnitCreateModel"
+      responses:
+        "201":
+          description: Successfully created the storage unit
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StorageUnitResponse"
+        "403":
+          description: Unauthorized access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
       security:
         - CognitoAuthorizer: []
       x-amazon-apigateway-integration:
         httpMethod: "POST"
         uri: 
-          Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${BookStorageUnitFunction.Arn}/invocations'
+          Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${CreateStorageUnitFunction.Arn}/invocations'
         passthroughBehavior: "when_no_match"
         type: "aws_proxy"
+    
+    get:
+      summary: Retrieve list of storage units
+      parameters:
+        - name: status
+          in: query
+          schema:
+            type: string
+            enum: [Available, Unavailable, Reserved]
+        - name: page
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 10
+      responses:
+        "200":
+          description: Successfully retrieved storage units
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  units:
+                    type: array
+                    items:
+                      $ref: "#/components/schemas/StorageUnitResponse"
+                  total:
+                    type: integer
+                  page:
+                    type: integer
+      security:
+        - CognitoAuthorizer: []
+      x-amazon-apigateway-integration:
+        httpMethod: "POST"
+        uri: 
+          Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListStorageUnitsFunction.Arn}/invocations'
+        passthroughBehavior: "when_no_match"
+        type: "aws_proxy"
+
+
+  /book-unit:
     post:
       summary: Book a storage unit.
       parameters:
@@ -380,6 +448,57 @@ paths:
 
 components:
   schemas:
+    StorageUnitCreateModel:
+      type: object
+      required:
+        - location
+        - size
+        - imgUrl
+        - availabilityStatus
+      properties:
+        location:
+          type: string
+          description: Location of the storage unit
+          example: "Building A, Floor 2, Unit 203"
+        size:
+          type: string
+          description: Size of the storage unit
+          enum: 
+            - Small
+            - Medium
+            - Large
+            - Extra Large
+        imgUrl:
+          type: string
+          description: URL of the storage unit image
+          format: uri
+        availabilityStatus:
+          type: string
+          description: Current availability status of the unit
+          enum: 
+            - Available
+            - Unavailable
+            - Reserved
+    
+    StorageUnitResponse:
+      type: object
+      properties:
+        unit_id:
+          type: string
+          description: Unique identifier for the storage unit
+        location:
+          type: string
+          description: Location of the storage unit
+        size:
+          type: string
+          description: Size of the storage unit
+        imgUrl:
+          type: string
+          description: URL of the storage unit image
+        availabilityStatus:
+          type: string
+          description: Current availability status of the unit
+
     UnitStatusUpdateResponse:
       type: object
       properties:

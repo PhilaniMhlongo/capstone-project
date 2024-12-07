@@ -62,6 +62,48 @@ Resources:
         Projection:
           ProjectionType: ALL
       BillingMode: PAY_PER_REQUEST
+  CreateStorageUnitFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: CreateStorageUnitFunction
+      Handler: create_unit.lambda_handler
+      Runtime: python3.9
+      Tracing: Active
+      Policies:
+      - DynamoDBCrudPolicy:
+          TableName:
+            Ref: StorageUnitsTable
+      - Statement:
+        - Effect: Allow
+          Action:
+          - cognito-idp:AdminGetUser
+          Resource:
+            Fn::Sub: arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPool}
+      Environment:
+        Variables:
+          STORAGE_UNITS_TABLE:
+            Ref: StorageUnitsTable
+          USER_POOL_ID:
+            Ref: UserPool
+    Metadata:
+      SamResourceId: CreateStorageUnitFunction
+  ListStorageUnitsFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ListStorageUnitsFunction
+      Handler: list_units.lambda_handler
+      Runtime: python3.9
+      Tracing: Active
+      Policies:
+      - DynamoDBReadPolicy:
+          TableName:
+            Ref: StorageUnitsTable
+      Environment:
+        Variables:
+          STORAGE_UNITS_TABLE:
+            Ref: StorageUnitsTable
+    Metadata:
+      SamResourceId: ListStorageUnitsFunction
   BookStorageUnitFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -359,6 +401,15 @@ Resources:
       Principal: apigateway.amazonaws.com
       SourceArn:
         Fn::Sub: arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ProfileApiGateway}/*/GET/rentals
+  CreateStorageUnitPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName:
+        Ref: CreateStorageUnitFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Sub: arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ProfileApiGateway}/*/POST/units
 Outputs:
   UnitBus:
     Description: Rent Unit Event Bus Output
