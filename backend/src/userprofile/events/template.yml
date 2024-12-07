@@ -117,13 +117,18 @@ Resources:
         Variables:
           STORAGE_UNITS_TABLE: !Ref StorageUnitsTable
           RENTALS_TABLE: !Ref RentalsTable
+          UNIT_BUS_NAME: !Ref UnitBus
       Events:
-         BookStorageUnit:
-          Type: Api
+        Trigger:
+          Type: EventBridgeRule
           Properties:
-            Path: /book-unit
-            Method: post
-            RestApiId: !Ref ProfileApiGateway
+            EventBusName: !Ref UnitBus
+            Pattern:
+              source:
+                - rentals-service
+              detail-type:
+                - storage.unit.booked
+
   # manage storage unit
   AccessLogTable:
     Type: AWS::DynamoDB::Table

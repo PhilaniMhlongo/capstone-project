@@ -1,6 +1,7 @@
 import os
 import uuid
 import json
+import traceback
 import boto3
 from datetime import datetime, timedelta
 from aws_lambda_powertools import Logger, Tracer
@@ -11,150 +12,213 @@ tracer = Tracer(service="StorageApp")
 storage_units_table = os.getenv('STORAGE_UNITS_TABLE')
 rentals_table = os.getenv('RENTALS_TABLE')
 dynamodb = boto3.resource('dynamodb')
-units_table = dynamodb.Table(storage_units_table)
-rentals_table = dynamodb.Table(rentals_table)
+
+# Enhanced logging configuration
+logger.setLevel('INFO')
+
+# Constants for validation
+VALID_DURATIONS = {'1day', '1month', '6months', '1year', 'indefinite'}
+VALID_BILLING_OPTIONS = {'monthly', 'annually', 'prepaid'}
+
+@tracer.capture_method
+def validate_booking_request(detail):
+    """
+    Validate the booking request parameters with enhanced error details
+    """
+    # Comprehensive field validation
+    required_fields = ['unit_id', 'duration', 'billingOption']
+    for field in required_fields:
+        if field not in detail or not detail.get(field):
+            raise ValueError(f"Missing required field: {field}")
+    
+    # Detailed validation with specific error messages
+    if detail['duration'] not in VALID_DURATIONS:
+        raise ValueError(
+            f"Invalid duration '{detail['duration']}'. "
+            f"Must be one of {', '.join(VALID_DURATIONS)}"
+        )
+    
+    if detail['billingOption'] not in VALID_BILLING_OPTIONS:
+        raise ValueError(
+            f"Invalid billing option '{detail['billingOption']}'. "
+            f"Must be one of {', '.join(VALID_BILLING_OPTIONS)}"
+        )
 
 @tracer.capture_method
 def book_storage_unit(event, context):
     """
-    Book a storage unit with flexible rental options
+    Book a storage unit with comprehensive error handling and logging
     """
-    logger.info("Raw Event Received", extra={"event": event})
-    
     try:
-        # Extract user_id
-        if 'requestContext' not in event or 'authorizer' not in event['requestContext']:
-            logger.error("Missing authorization context")
-            return {
-                "statusCode": 401,
-                "body": json.dumps({"error": "Unauthorized: Missing authentication context"})
-            }
+        # Log the full event for debugging
+        logger.info(f"Raw event: {json.dumps(event)}")
         
-        user_id = event['requestContext']['authorizer']['claims']['sub']
-        logger.info(f"User ID: {user_id}")
+        # Parse the body if it's a string (API Gateway often passes body as string)
+        if isinstance(event, str):
+            try:
+                event = json.loads(event)
+            except json.JSONDecodeError:
+                raise ValueError("Invalid JSON in event")
         
-        # Parse request body
-        if 'body' not in event:
-            logger.error("Missing request body")
-            return {
-                "statusCode": 400,
-                "body": json.dumps({"error": "Missing request body"})
-            }
+        # Handle different event structures
+        detail = event
+        if 'body' in event:
+            # Try to parse body if it's a JSON string
+            try:
+                detail = json.loads(event['body']) if isinstance(event['body'], str) else event['body']
+            except (json.JSONDecodeError, TypeError):
+                detail = event
         
+        # Log parsed detail for debugging
+        logger.info(f"Parsed detail: {json.dumps(detail)}")
+        
+        # Extract user ID from context (modify as needed based on your auth setup)
+        user_id = (event.get('requestContext', {})
+                   .get('authorizer', {})
+                   .get('claims', {})
+                   .get('sub'))
+        
+        # Fallback user ID if not found
+        if not user_id:
+            # You might want to replace this with a more appropriate fallback or error handling
+            user_id = 'unknown_user'
+        
+        # Validate input with enhanced error handling
+        validate_booking_request(detail)
+        
+        unit_id = detail['unit_id']
+        rental_duration = detail['duration']
+        billing_option = detail['billingOption']
+        
+        # Rest of the function remains the same as in the previous version
+        # (DynamoDB operations, rental creation, etc.)
+        
+        # Enhanced DynamoDB error handling
         try:
-            body = json.loads(event['body'])
-        except json.JSONDecodeError:
-            logger.error("Invalid JSON in request body")
+            units_table_instance = dynamodb.Table(storage_units_table)
+            rentals_table_instance = dynamodb.Table(rentals_table)
+        except Exception as db_error:
+            logger.error(f"DynamoDB table initialization error: {str(db_error)}")
+            raise RuntimeError("Failed to connect to database")
+        
+        # Check unit availability with detailed logging
+        try:
+            unit_response = units_table_instance.get_item(
+                Key={'unit_id': unit_id}
+            )
+        except Exception as fetch_error:
+            logger.error(f"Error fetching unit details: {str(fetch_error)}")
             return {
-                "statusCode": 400,
-                "body": json.dumps({"error": "Invalid JSON in request body"})
+                "statusCode": 500,
+                "body": json.dumps({
+                    "error": "Database query failed",
+                    "details": str(fetch_error)
+                })
             }
         
-        # Validate required fields
-        required_fields = ['unit_id', 'duration', 'billingOption']
-        for field in required_fields:
-            if field not in body:
-                logger.error(f"Missing required field: {field}")
-                return {
-                    "statusCode": 400,
-                    "body": json.dumps({"error": f"Missing required field: {field}"})
-                }
-        
-        unit_id = body['unit_id']
-        rental_duration = body['duration']
-        billing_option = body['billingOption']
-        
-        # Check unit availability
-        unit_response = units_table.get_item(
-            Key={'unit_id': unit_id}
-        )
         unit = unit_response.get('Item')
         
-        if not unit:
-            logger.error(f"Unit not found: {unit_id}")
-            return {
-                "statusCode": 404,
-                "body": json.dumps({"error": "Unit not found"})
-            }
-        
-        if unit.get('availabilityStatus') != 'Available':
-            logger.error(f"Unit not available: {unit_id}, Status: {unit.get('availabilityStatus')}")
+        if not unit or unit['availabilityStatus'] != 'Available':
+            logger.warning(f"Unit {unit_id} not available. Current status: {unit.get('availabilityStatus', 'Unknown')}")
             return {
                 "statusCode": 400,
-                "body": json.dumps({"error": "Unit not available"})
+                "body": json.dumps({
+                    "error": "Unit not available",
+                    "unit_status": unit.get('availabilityStatus', 'Unknown')
+                })
             }
         
-        # Calculate rental details
+        # Calculate rental details with UTC timestamp
         rental_id = str(uuid.uuid4())
-        start_date = datetime.now()
+        start_date = datetime.utcnow()
         
-        duration_map = {
-            '1day': 1, 
-            '1month': 30, 
-            '6months': 180, 
-            '1year': 365,
-            'indefinite': None
-        }
+        # Calculate end date based on duration
+        if rental_duration == 'indefinite':
+            end_date = None
+        else:
+            duration_map = {
+                '1day': 1, 
+                '1month': 30, 
+                '6months': 180, 
+                '1year': 365
+            }
+            days = duration_map.get(rental_duration, 30)
+            end_date = start_date + timedelta(days=days)
         
-        if rental_duration not in duration_map:
-            logger.error(f"Invalid rental duration: {rental_duration}")
+        # Create rental record with comprehensive error handling
+        try:
+            rentals_table_instance.put_item(
+                Item={
+                    'rental_id': rental_id,
+                    'unit_id': unit_id,
+                    'user_id': user_id,
+                    'start_date': start_date.isoformat(),
+                    'end_date': end_date.isoformat() if end_date else None,
+                    'billing_option': billing_option,
+                    'status': 'Reserved'
+                }
+            )
+        except Exception as put_error:
+            logger.error(f"Error creating rental record: {str(put_error)}")
             return {
-                "statusCode": 400,
-                "body": json.dumps({"error": "Invalid rental duration"})
+                "statusCode": 500,
+                "body": json.dumps({
+                    "error": "Failed to create rental record",
+                    "details": str(put_error)
+                })
             }
         
-        days = duration_map.get(rental_duration)
-        end_date = start_date + timedelta(days=days) if days is not None else None
-        
-        # Create rental record
-        rentals_table.put_item(
-            Item={
-                'rental_id': rental_id,
-                'unit_id': unit_id,
-                'user_id': user_id,
-                'start_date': start_date.isoformat(),
-                'end_date': end_date.isoformat() if end_date else None,
-                'billing_option': billing_option,
-                'status': 'Reserved'
+        # Update unit status with error handling
+        try:
+            units_table_instance.update_item(
+                Key={'unit_id': unit_id},
+                UpdateExpression='SET availabilityStatus = :status',
+                ExpressionAttributeValues={
+                    ':status': 'Reserved'
+                },
+                ReturnValues='UPDATED_NEW'
+            )
+        except Exception as update_error:
+            logger.error(f"Error updating unit status: {str(update_error)}")
+            return {
+                "statusCode": 500,
+                "body": json.dumps({
+                    "error": "Failed to update unit status",
+                    "details": str(update_error)
+                })
             }
-        )
         
-        # Update unit status
-        key = {"unit_id": {"S": unit_id}}
-
-        # Update Expression
-        update_expression = "SET #status = :status_val"
-        expression_attribute_names = {"#status": "availabilityStatus"}
-        expression_attribute_values = {":status_val": {"S": "Reserved"}}
-
-        # Update the item
-        dynamodb.update_item(
-            TableName=storage_units_table,
-            Key=key,
-            UpdateExpression=update_expression,
-            ExpressionAttributeNames=expression_attribute_names,
-            ExpressionAttributeValues=expression_attribute_values,
-            ReturnValues="UPDATED_NEW"
-        )
-            
         logger.info(f"Storage unit {unit_id} booked by user {user_id}")
         
         return {
-            "statusCode": 201,
-            "headers": {
-                "Content-Type": "application/json"
-            },
+            "statusCode": 200,
             "body": json.dumps({
                 "rental_id": rental_id,
-                "unit_id": unit_id
+                "unit_id": unit_id,
+                "message": "Booking successful"
             })
         }
     
+    except ValueError as ve:
+        logger.error(f"Validation Error: {str(ve)}")
+        return {
+            "statusCode": 400,
+            "body": json.dumps({
+                "error": "Validation failed",
+                "details": str(ve)
+            })
+        }
     except Exception as e:
-        logger.error(f"Unexpected error: {str(e)}")
+        # Comprehensive error logging
+        logger.error(f"Unexpected error booking storage unit: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
         return {
             "statusCode": 500,
-            "body": json.dumps({"error": "Internal server error"})
+            "body": json.dumps({
+                "error": "Internal server error",
+                "details": str(e),
+                "traceback": traceback.format_exc()
+            })
         }
 
 def lambda_handler(event, context):

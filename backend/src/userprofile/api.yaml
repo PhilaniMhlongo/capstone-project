@@ -170,35 +170,13 @@ paths:
                 $ref: "#/components/schemas/StorageUnitBookingResponse"
       security:
         - CognitoAuthorizer: []
-      x-amazon-apigateway-request-validator: ValidateBody
       x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: ${ApiGatewayEventBridgeRole.Arn}
         httpMethod: POST
-        uri: arn:aws:apigateway:${AWS::Region}:events:action/PutEvents
-        passthroughBehavior: when_no_templates
-        type: aws
-        requestTemplates:
-          application/json:
-            Fn::Sub: >
-              #set($context.requestOverride.header.X-Amz-Target = "AWSEvents.PutEvents")
-              #set($context.requestOverride.header.Content-Type = "application/x-amz-json-1.1")
-              {
-                "Entries": [
-                  {
-                    "Detail": "{\"unitId\": \"$input.path('$.unit_id')\", \"customerId\": \"$context.authorizer.claims.sub\", \"duration\": \"$input.path('$.duration')\", \"billingOption\": \"$input.path('$.billingOption')\", \"startDate\": \"$input.path('$.start_date')\"}", 
-                    "DetailType": "storage.unit.booked",
-                    "EventBusName": "${UnitBus.Name}",
-                    "Source": "storage-service"
-                  }
-                ]
-              }
-        responses:
-          default:
-            statusCode: "201"
-            responseTemplates:
-              application/json: "{}"
-
+        uri: 
+          Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${BookStorageUnitFunction.Arn}/invocations'
+        passthroughBehavior: "when_no_match"
+        type: "aws_proxy"
+        
   /rentals/{rentalId}:
     get:
       summary: Retrieve rental details by rental ID.

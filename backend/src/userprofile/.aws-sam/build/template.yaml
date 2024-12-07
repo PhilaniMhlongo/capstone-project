@@ -125,16 +125,13 @@ Resources:
           RENTALS_TABLE:
             Ref: RentalsTable
       Events:
-        Trigger:
-          Type: EventBridgeRule
+        BookStorageUnit:
+          Type: Api
           Properties:
-            EventBusName:
-              Ref: UnitBus
-            Pattern:
-              source:
-              - rentals-service
-              detail-type:
-              - storage.unit.booked
+            Path: /book-unit
+            Method: post
+            RestApiId:
+              Ref: ProfileApiGateway
     Metadata:
       SamResourceId: BookStorageUnitFunction
   AccessLogTable:
