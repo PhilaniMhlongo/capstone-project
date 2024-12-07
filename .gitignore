@@ -2,17 +2,5 @@ venv/
 endpoint.txt
 backend/src/users/.aws-sam/
 backend/src/units/.aws-sam/
-<<<<<<< HEAD
 backend/src/userprofile/.aws-sam/
-=======
-backend/src/userprofile/.aws-sam/
-<<<<<<< HEAD
-=======
-venv
-endpoint.txt
-backend/src/users/.aws-sam/
-backend/src/units/.aws-sam/
->>>>>>> e5490ec (creating infrastructure for units microservice)
->>>>>>> 61cabec (creating infrastructure for units microservice)
-=======
->>>>>>> ffb2db0 (cleaned up merge conflicts)
+backend/src/units/venv/
