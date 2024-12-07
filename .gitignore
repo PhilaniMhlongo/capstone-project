@@ -1,3 +1,6 @@
-venv
+venv/
 endpoint.txt
-capstone-project/backend/src/users/.aws-sam/build
+backend/src/users/.aws-sam/
+backend/src/units/.aws-sam/
+backend/src/userprofile/.aws-sam/
+backend/src/units/venv/

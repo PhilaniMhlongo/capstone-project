@@ -1,0 +1,93 @@
+openapi: 3.0.1
+info:
+  title: units-service
+  version: 1.0.0
+paths:
+  /units:
+    post:
+      summary: Create a new unit
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                imageUrl:
+                  type: string
+                name:
+                  type: string
+                size:
+                  type: string
+                location:
+                  type: string
+              required:
+                - name
+                - size
+                - location
+      responses:
+        201:
+          description: Successfully created the unit
+    get:
+      summary: Get a list of units
+      responses:
+        200:
+          description: A list of rental units
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    unitId:
+                      type: string
+                    name:
+                      type: string
+                    size:
+                      type: string
+                    location:
+                      type: string
+                    imageUrl:
+                      type: string
+
+  /units/{unitId}:
+    get:
+      summary: Retrieve a unit by ID
+      parameters:
+        - name: unitId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Successfully retrieved the unit
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  unitId:
+                    type: string
+                  name:
+                    type: string
+                  size:
+                    type: string
+                  location:
+                    type: string
+                  imageUrl:
+                    type: string
+
+    delete:
+      summary: Delete a unit by ID
+      parameters:
+        - name: unitId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        200:
+          description: Successfully deleted the unit
+        404:
+          description: Unit not found
