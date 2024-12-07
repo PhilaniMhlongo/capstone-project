@@ -7,20 +7,19 @@ Parameters:
     Description: The Cognito User Pool ID for the Authorizer
 
 Resources:
-
-    RentalUnitsUserPool:
-      Type: AWS::Cognito::UserPool
-      Properties:
-        UserPoolName: RentalUnitsUserPool
-        Policies:
-          PasswordPolicy:
-            MinimumLength: 8
-            RequireUppercase: true
-            RequireLowercase: true
-            RequireNumbers: true
-            RequireSymbols: true
-        AutoVerifiedAttributes:
-          - email
+  RentalUnitsUserPool:
+    Type: AWS::Cognito::UserPool
+    Properties:
+      UserPoolName: RentalUnitsUserPool
+      Policies:
+        PasswordPolicy:
+          MinimumLength: 8
+          RequireUppercase: true
+          RequireLowercase: true
+          RequireNumbers: true
+          RequireSymbols: true
+      AutoVerifiedAttributes:
+        - email
 
   # API Gateway to expose the Lambda functions
   RentalUnitsApi:
@@ -109,11 +108,11 @@ Outputs:
   AddUnitApiUrl:
     Description: "URL for adding units"
     Value: !Sub "https://${RentalUnitsApi}.execute-api.${AWS::Region}.amazonaws.com/dev/units"
-  
+
   DeleteUnitApiUrl:
     Description: "URL for deleting units"
     Value: !Sub "https://${RentalUnitsApi}.execute-api.${AWS::Region}.amazonaws.com/dev/units/{unitId}"
-  
+
   RentalUnitsTableName:
     Description: "Rental Units DynamoDB Table Name"
     Value: !Ref RentalUnitsTable
