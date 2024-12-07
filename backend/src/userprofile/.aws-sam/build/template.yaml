@@ -95,13 +95,16 @@ Resources:
       Runtime: python3.9
       Tracing: Active
       Policies:
-      - DynamoDBReadPolicy:
+        DynamoDBReadPolicy:
           TableName:
             Ref: StorageUnitsTable
       Environment:
         Variables:
           STORAGE_UNITS_TABLE:
             Ref: StorageUnitsTable
+          POWERTOOLS_SERVICE_NAME: storage-units
+          POWERTOOLS_METRICS_NAMESPACE: StorageService
+          LOG_LEVEL: INFO
     Metadata:
       SamResourceId: ListStorageUnitsFunction
   BookStorageUnitFunction:
@@ -212,106 +215,6 @@ Resources:
               Ref: ProfileApiGateway
     Metadata:
       SamResourceId: ManageStorageUnitFunction
-  UserUnitTable:
-    Type: AWS::DynamoDB::Table
-    Properties:
-      TableName:
-        Fn::Sub: ${AWS::StackName}-UnitTable
-      AttributeDefinitions:
-      - AttributeName: user_id
-        AttributeType: S
-      - AttributeName: unit_id
-        AttributeType: S
-      KeySchema:
-      - AttributeName: user_id
-        KeyType: HASH
-      - AttributeName: unit_id
-        KeyType: RANGE
-      BillingMode: PAY_PER_REQUEST
-  AddUserRentUnitFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: AddUserRentUnitFunction
-      Handler: createRental.lambda_handler
-      Runtime: python3.9
-      Tracing: Active
-      Policies:
-      - DynamoDBCrudPolicy:
-          TableName:
-            Ref: UserUnitTable
-      Environment:
-        Variables:
-          TABLE_NAME:
-            Ref: UserUnitTable
-      Events:
-        Trigger:
-          Type: EventBridgeRule
-          Properties:
-            EventBusName:
-              Ref: UnitBus
-            Pattern:
-              source:
-              - rentals-service
-              detail-type:
-              - rental.created
-    Metadata:
-      SamResourceId: AddUserRentUnitFunction
-  EditUserRentalFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: EditUserRentalFunction
-      Handler: editStatus.lambda_handler
-      Runtime: python3.9
-      Tracing: Active
-      Policies:
-      - DynamoDBCrudPolicy:
-          TableName:
-            Ref: UserUnitTable
-      Environment:
-        Variables:
-          TABLE_NAME:
-            Ref: UserUnitTable
-      Events:
-        Trigger:
-          Type: EventBridgeRule
-          Properties:
-            EventBusName:
-              Ref: UnitBus
-            Pattern:
-              source:
-              - rentals-service
-              detail-type:
-              - rental.status.updated
-    Metadata:
-      SamResourceId: EditUserRentalFunction
-  CancelUserRentalFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: CancelUserRentalFunction
-      Handler: cancelRental.lambda_handler
-      Runtime: python3.9
-      Tracing: Active
-      Policies:
-      - DynamoDBCrudPolicy:
-          TableName:
-            Ref: UserUnitTable
-      Environment:
-        Variables:
-          TABLE_NAME:
-            Ref: UserUnitTable
-      Events:
-        Trigger:
-          Type: EventBridgeRule
-          Properties:
-            EventBusName:
-              Ref: UnitBus
-            Pattern:
-              source:
-              - rentals-service
-              detail-type:
-              - rental.canceled
-    Metadata:
-      SamResourceId: CancelUserRentalFunction
   UnitBus:
     Type: AWS::Events::EventBus
     Properties:
@@ -373,31 +276,15 @@ Resources:
           Name: AWS::Include
           Parameters:
             Location: ../../api.yaml
-  ListUserRentFunction:
-    Type: AWS::Serverless::Function
-    Properties:
-      CodeUri: ListUserRentFunction
-      Handler: listRental.lambda_handler
-      Runtime: python3.9
-      Policies:
-        DynamoDBReadPolicy:
-          TableName:
-            Ref: UserUnitTable
-      Environment:
-        Variables:
-          TABLE_NAME:
-            Ref: UserUnitTable
-    Metadata:
-      SamResourceId: ListUserRentFunction
   ListUserRentPermission:
     Type: AWS::Lambda::Permission
     Properties:
       Action: lambda:InvokeFunction
       FunctionName:
-        Ref: ListUserRentFunction
+        Ref: ListStorageUnitsFunction
       Principal: apigateway.amazonaws.com
       SourceArn:
-        Fn::Sub: arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ProfileApiGateway}/*/GET/rentals
+        Fn::Sub: arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ProfileApiGateway}/*/GET/units
   CreateStorageUnitPermission:
     Type: AWS::Lambda::Permission
     Properties:
@@ -412,10 +299,6 @@ Outputs:
     Description: Rent Unit Event Bus Output
     Value:
       Ref: UnitBus
-  UnitTable:
-    Description: DynamoDB User Unit Table
-    Value:
-      Ref: UserUnitTable
   AccessLogTable:
     Description: DynamoDB Access Log Table
     Value:

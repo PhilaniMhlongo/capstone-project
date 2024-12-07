@@ -3,70 +3,7 @@ info:
   title: rentals-service
   version: 2022-07-12T06:04:43Z
 paths:
-  /rentals:
-    get:
-      security:
-        - CognitoAuthorizer: []
-      x-amazon-apigateway-integration:
-        httpMethod: "POST"
-        uri: 
-          Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListUserRentFunction.Arn}/invocations'
-        passthroughBehavior: "when_no_match"
-        type: "aws_proxy"
-    post:
-      summary: Create a new rental.
-      parameters:
-        - name: Content-Type
-          in: header
-          schema:
-            type: string
-        - name: X-Amz-Target
-          in: header
-          schema:
-            type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/RentalInputModel"
-      responses:
-        "201":
-          description: Successfully created the rental.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/RentalResponse"
-      security:
-        - CognitoAuthorizer: []
-      x-amazon-apigateway-request-validator: ValidateBody
-      x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: ${ApiGatewayEventBridgeRole.Arn}
-        httpMethod: POST
-        uri: arn:aws:apigateway:${AWS::Region}:events:action/PutEvents
-        passthroughBehavior: when_no_templates
-        type: aws
-        requestTemplates:
-          application/json:
-            Fn::Sub: >
-              #set($context.requestOverride.header.X-Amz-Target = "AWSEvents.PutEvents")
-              #set($context.requestOverride.header.Content-Type = "application/x-amz-json-1.1")
-              {
-                "Entries": [
-                  {
-                    "Detail": "{\"unitId\": \"$input.path('$.unitId')\", \"customerId\": \"$input.path('$.customerId')\", \"rentalStatus\": \"$input.path('$.rentalStatus')\", \"startDate\": \"$input.path('$.startDate')\", \"userId\": \"$context.authorizer.claims.sub\"}",
-                    "DetailType": "rental.created",
-                    "EventBusName": "${UnitBus.Name}",
-                    "Source": "rentals-service"
-                  }
-                ]
-              }
-        responses:
-          default:
-            statusCode: "201"
-            responseTemplates:
-              application/json: "{}"
-
+ 
   /units:
     post:
       summary: Create a new storage unit (Admin only)
@@ -98,19 +35,21 @@ paths:
         type: "aws_proxy"
     
     get:
-      summary: Retrieve list of storage units
+      summary: Retrieve list of storage units with advanced filtering and pagination
       parameters:
         - name: status
           in: query
           schema:
             type: string
             enum: [Available, Unavailable, Reserved]
+            description: Filter units by availability status
         - name: page
           in: query
           schema:
             type: integer
             minimum: 1
             default: 1
+            description: Page number for paginated results
         - name: limit
           in: query
           schema:
@@ -118,6 +57,7 @@ paths:
             minimum: 1
             maximum: 100
             default: 10
+            description: Number of units to return per page (1-100)
       responses:
         "200":
           description: Successfully retrieved storage units
@@ -126,14 +66,60 @@ paths:
               schema:
                 type: object
                 properties:
+                  request_id:
+                    type: string
+                    description: Unique identifier for the request
                   units:
                     type: array
                     items:
                       $ref: "#/components/schemas/StorageUnitResponse"
                   total:
                     type: integer
+                    description: Total number of units returned
                   page:
                     type: integer
+                    description: Current page number
+                  limit:
+                    type: integer
+                    description: Number of units per page
+                  status_filter:
+                    type: string
+                    description: Applied status filter
+                  debug_info:
+                    type: object
+                    properties:
+                      scanned_count:
+                        type: integer
+                        description: Total number of items scanned
+                      last_evaluated_key:
+                        type: object
+                        description: Pagination token for subsequent requests
+        "400":
+          description: Invalid query parameters
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  request_id:
+                    type: string
+                  details:
+                    type: string
+        "500":
+          description: Server-side error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                  request_id:
+                    type: string
+                  details:
+                    type: string
       security:
         - CognitoAuthorizer: []
       x-amazon-apigateway-integration:
@@ -177,112 +163,7 @@ paths:
         passthroughBehavior: "when_no_match"
         type: "aws_proxy"
         
-  /rentals/{rentalId}:
-    get:
-      summary: Retrieve rental details by rental ID.
-      parameters:
-        - name: rentalId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: Content-Type
-          in: header
-          schema:
-            type: string
-        - name: X-Amz-Target
-          in: header
-          schema:
-            type: string
-      responses:
-        "200":
-          description: Successfully retrieved the rental details.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/RentalResponse"
-      security:
-        - CognitoAuthorizer: []
-      x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: "${ApiGatewayEventBridgeRole.Arn}"
-        httpMethod: POST
-        uri: "arn:aws:apigateway:${AWS::Region}:events:action/PutEvents"
-        passthroughBehavior: when_no_templates
-        type: aws
-        requestTemplates:
-          application/json:
-            Fn::Sub: >
-              {
-                "TableName": "RentalsTable",
-                "Key": {
-                  "RentalId": {"S": "$input.params('rentalId')"}
-                }
-              }
-        responses:
-          default:
-            statusCode: "200"
-            responseTemplates:
-              application/json: "$input.path('$.Item')"
 
-  /rentals/{rentalId}/status:
-    put:
-      summary: Update the status of a rental.
-      parameters:
-        - name: rentalId
-          in: path
-          required: true
-          schema:
-            type: string
-        - name: Content-Type
-          in: header
-          schema:
-            type: string
-        - name: X-Amz-Target
-          in: header
-          schema:
-            type: string
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: "#/components/schemas/RentalStatusUpdateModel"
-      responses:
-        "200":
-          description: Successfully updated the rental status.
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/RentalResponse"
-      security:
-        - CognitoAuthorizer: []
-      x-amazon-apigateway-integration:
-        credentials:
-          Fn::Sub: ${ApiGatewayEventBridgeRole.Arn}
-        httpMethod: POST
-        uri: arn:aws:apigateway:${AWS::Region}:events:action/PutEvents
-        passthroughBehavior: when_no_templates
-        type: aws
-        requestTemplates:
-          application/json:
-            Fn::Sub: >
-              #set($context.requestOverride.header.X-Amz-Target = "AWSEvents.PutEvents")
-              #set($context.requestOverride.header.Content-Type = "application/x-amz-json-1.1")
-              {
-                "Entries": [
-                  {
-                    "Detail": "{\"rentalId\": \"$input.params('rentalId')\", \"rentalStatus\": \"$input.path('$.rentalStatus')\", \"userId\": \"$context.authorizer.claims.sub\"}",
-                    "DetailType": "rental.status.updated",
-                    "EventBusName": "${UnitBus.Name}",
-                    "Source": "rentals-service"
-                  }
-                ]
-              }
-        responses:
-          default:
-            statusCode: "200"
-            responseTemplates:
-              application/json: "{}"
 
   /units/{unitId}/status:
     put:
@@ -544,48 +425,7 @@ components:
           type: string
           description: Description of the error
    
-    RentalInputModel:
-      type: object
-      required:
-        - unitId
-        - customerId
-        - rentalStatus
-        - startDate
-      properties:
-        unitId:
-          type: string
-        customerId:
-          type: string
-        rentalStatus:
-          type: string
-          enum: [Available, Reserved, Cancelling, Problem, Unavailable]
-        startDate:
-          type: string
-          format: date-time
-    RentalStatusUpdateModel:
-      type: object
-      required:
-        - rentalStatus
-      properties:
-        rentalStatus:
-          type: string
-          enum: [Available, Reserved, Cancelling, Problem, Unavailable]
-    RentalResponse:
-      type: object
-      properties:
-        rentalId:
-          type: string
-        unitId:
-          type: string
-        customerId:
-          type: string
-        rentalStatus:
-          type: string
-        startDate:
-          type: string
-          format: date-time
-    Empty:
-      type: object
+  
   securitySchemes:
     CognitoAuthorizer:
       type: apiKey

@@ -7,6 +7,6 @@ architecture = "x86_64"
 handler = "create_unit.lambda_handler"
 manifest_hash = ""
 packagetype = "Zip"
-functions = ["CreateStorageUnitFunction", "ListStorageUnitsFunction", "BookStorageUnitFunction", "ManageStorageUnitFunction", "AddUserRentUnitFunction", "EditUserRentalFunction", "CancelUserRentalFunction", "ListUserRentFunction"]
+functions = ["CreateStorageUnitFunction", "ListStorageUnitsFunction", "BookStorageUnitFunction", "ManageStorageUnitFunction"]
 
 [layer_build_definitions]
