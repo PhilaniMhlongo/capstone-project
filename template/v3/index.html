@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Storage Unit Booking</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Book a Storage Unit</h1>
+            <nav>
+                <button id="loginBtn">Login</button>
+                <button id="logoutBtn" style="display:none;">Logout</button>
+            </nav>
+        </header>
+
+        <div id="loginModal" class="login-modal" aria-labelledby="modalTitle" aria-hidden="true">
+            <div class="modal-content">
+                <h2 id="modalTitle">Login</h2>
+                <form id="loginForm">
+                    <input type="text" id="username" placeholder="Username" required>
+                    <input type="password" id="password" placeholder="Password" required>
+                    <button type="submit">Login</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="overlay" class="overlay" aria-hidden="true"></div>
+
+        <main>
+            <section id="unitCards" class="unit-cards">
+                <!-- Available units will be dynamically loaded here -->
+            </section>
+
+            <div class="booking-form">
+                <h2>Book a Storage Unit</h2>
+                <form id="bookingForm">
+                    <div class="form-group">
+                        <label for="unitSelect">Select Unit</label>
+                        <select id="unitSelect" required>
+                            <option value="">Choose a Unit</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Duration</label>
+                        <div class="duration-options">
+                            <input type="radio" id="duration1Day" name="duration" value="1" required>
+                            <label for="duration1Day">1 Day</label>
+                            
+                            <input type="radio" id="duration1Month" name="duration" value="30">
+                            <label for="duration1Month">1 Month</label>
+                            
+                            <input type="radio" id="duration6Months" name="duration" value="180">
+                            <label for="duration6Months">6 Months</label>
+                            
+                            <input type="radio" id="duration1Year" name="duration" value="365">
+                            <label for="duration1Year">1 Year</label>
+                            
+                            <input type="radio" id="durationIndefinite" name="duration" value="-1">
+                            <label for="durationIndefinite">Indefinite</label>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Billing Option</label>
+                        <select id="billingOption" required>
+                            <option value="">Select Billing Cycle</option>
+                            <option value="monthly">Monthly</option>
+                            <option value="quarterly">Quarterly</option>
+                            <option value="yearly">Yearly</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="startDate">Start Date</label>
+                        <input type="date" id="startDate" required>
+                    </div>
+
+                    <img id="unitImagePreview" src="" alt="Unit Preview" 
+                         style="display:none; max-width:100%; margin-top:10px; border:1px solid #ccc; border-radius:5px;">
+
+                    <div id="responseMessage" class="message" style="display:none;"></div>
+
+                    <button type="submit" id="bookNowBtn">Book Now</button>
+                </form>
+            </div>
+        </main>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

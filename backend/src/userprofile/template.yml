@@ -24,6 +24,7 @@ Globals:
     TracingEnabled: true
 
 Resources:
+<<<<<<< HEAD
   StorageUnitsTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -159,10 +160,34 @@ Resources:
     Properties:
       CodeUri: api/rent
       Handler: manage_storage_unit.lambda_handler
+=======
+  UserUnitTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${AWS::StackName}-UnitTable
+      AttributeDefinitions:
+        - AttributeName: "user_id"
+          AttributeType: "S"
+        - AttributeName: "unit_id"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "user_id"
+          KeyType: "HASH"
+        - AttributeName: "unit_id"
+          KeyType: "RANGE"
+      BillingMode: PAY_PER_REQUEST
+
+  AddUserRentUnitFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: api/rent
+      Handler: createRental.lambda_handler
+>>>>>>> 539f046c5c6f35cd44cc61214fad2662e54a8169
       Runtime: python3.9
       Tracing: Active
       Policies:
         - DynamoDBCrudPolicy:
+<<<<<<< HEAD
             TableName: !Ref StorageUnitsTable
         - DynamoDBCrudPolicy:
             TableName: !Ref RentalsTable
@@ -200,6 +225,72 @@ Resources:
             RestApiId: !Ref ProfileApiGateway
 
 
+=======
+            TableName: !Ref UserUnitTable
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref UserUnitTable
+      Events:
+        Trigger:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref UnitBus
+            Pattern:
+              source:
+                - rentals-service
+              detail-type:
+                - rental.created
+
+  EditUserRentalFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: api/rent
+      Handler: editStatus.lambda_handler
+      Runtime: python3.9
+      Tracing: Active
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UserUnitTable
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref UserUnitTable
+      # POWERTOOLS_SERVICE_NAME: serverless-workshop
+      Events:
+        Trigger:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref UnitBus
+            Pattern:
+              source:
+                - rentals-service
+              detail-type:
+                - rental.status.updated
+
+  CancelUserRentalFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: api/rent
+      Handler: cancelRental.lambda_handler
+      Runtime: python3.9
+      Tracing: Active
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref UserUnitTable
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref UserUnitTable
+      # POWERTOOLS_SERVICE_NAME: serverless-workshop
+      Events:
+        Trigger:
+          Type: EventBridgeRule
+          Properties:
+            EventBusName: !Ref UnitBus
+            Pattern:
+              source:
+                - rentals-service
+              detail-type:
+                - rental.canceled
+>>>>>>> 539f046c5c6f35cd44cc61214fad2662e54a8169
 
   UnitBus:
     Type: AWS::Events::EventBus
@@ -257,6 +348,21 @@ Resources:
               Location: api.yaml
 
 
+<<<<<<< HEAD
+=======
+  ListUserRentFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: api/rent
+      Handler: listRental.lambda_handler
+      Runtime: python3.9
+      Policies:
+        DynamoDBReadPolicy:
+          TableName: !Ref UserUnitTable
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref UserUnitTable
+>>>>>>> 539f046c5c6f35cd44cc61214fad2662e54a8169
 
   ListUserRentPermission:
     Type: AWS::Lambda::Permission
@@ -292,4 +398,4 @@ Outputs:
 
   ProfileApiEndpoint:
     Description: "API Gateway endpoint URL"
-    Value: !Sub "https://${ProfileApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Stage}/"
+    Value: !Sub "https://${ProfileApiGateway}.execute-api.${AWS::Region}.amazonaws.com/${Prod}/"

@@ -1,2 +1,8 @@
-venv
+venv/
 endpoint.txt
+backend/src/users/.aws-sam/
+backend/src/units/.aws-sam/
+backend/src/userprofile/.aws-sam/
+backend/src/units/venv/
+backend/src/users/tests/integration/__pycache__
+backend/src/users/tests/unit/__pycache__

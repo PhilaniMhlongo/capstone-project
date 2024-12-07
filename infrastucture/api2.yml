@@ -1,0 +1,382 @@
+openapi: 3.0.1
+info:
+  title: Storage Management Service
+  version: 2024-01-01
+  description: API for managing storage units, rentals, and payments
+
+paths:
+  /units:
+    get:
+      summary: List available storage units
+      operationId: listStorageUnits
+      parameters:
+        - name: facilityId
+          in: query
+          schema:
+            type: string
+        - name: minSize
+          in: query
+          schema:
+            type: number
+        - name: maxSize
+          in: query
+          schema:
+            type: number
+        - name: status
+          in: query
+          schema:
+            type: string
+            default: Available
+      responses:
+        '200':
+          description: Successfully retrieved storage units
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  units:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/StorageUnit'
+      security:
+        - CognitoAuthorizer: []
+      x-amazon-apigateway-integration:
+        httpMethod: POST
+        uri: 
+          Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ListStorageUnitsFunction.Arn}/invocations'
+        type: aws_proxy
+        passthroughBehavior: when_no_match
+
+  /units/book:
+    post:
+      summary: Book a storage unit
+      operationId: bookStorageUnit
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - unit_id
+              properties:
+                unit_id:
+                  type: string
+                duration:
+                  type: string
+                  enum: ['1day', '1month', '6months', '1year', 'indefinite']
+                  default: 'indefinite'
+                billingOption:
+                  type: string
+                  enum: ['monthly', 'yearly']
+                  default: 'monthly'
+      responses:
+        '200':
+          description: Successfully booked storage unit
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  rental_id:
+                    type: string
+                  unit_id:
+                    type: string
+      security:
+        - CognitoAuthorizer: []
+      x-amazon-apigateway-integration:
+        httpMethod: POST
+        uri: 
+          Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${BookStorageUnitFunction.Arn}/invocations'
+        type: aws_proxy
+        passthroughBehavior: when_no_match
+
+  /units/manage:
+    put:
+      summary: Update storage unit status
+      operationId: updateUnitStatus
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - unit_id
+                - status
+              properties:
+                unit_id:
+                  type: string
+                status:
+                  type: string
+                  enum: ['Available', 'Unavailable', 'Reserved', 'Cancelling', 'Problem']
+      responses:
+        '200':
+          description: Successfully updated unit status
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+      security:
+        - CognitoAuthorizer: []
+      x-amazon-apigateway-integration:
+        httpMethod: POST
+        uri: 
+          Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ManageStorageUnitFunction.Arn}/invocations'
+        type: aws_proxy
+        passthroughBehavior: when_no_match
+
+  /units/share-access:
+    post:
+      summary: Share storage unit access
+      operationId: shareUnitAccess
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rental_id
+                - shared_user_id
+              properties:
+                rental_id:
+                  type: string
+                shared_user_id:
+                  type: string
+                start_date:
+                  type: string
+                  format: date-time
+                end_date:
+                  type: string
+                  format: date-time
+      responses:
+        '200':
+          description: Successfully shared unit access
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+      security:
+        - CognitoAuthorizer: []
+      x-amazon-apigateway-integration:
+        httpMethod: POST
+        uri: 
+          Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ManageStorageUnitFunction.Arn}/invocations'
+        type: aws_proxy
+        passthroughBehavior: when_no_match
+
+  /units/log-access:
+    post:
+      summary: Log storage unit access
+      operationId: logUnitAccess
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - unit_id
+              properties:
+                unit_id:
+                  type: string
+      responses:
+        '200':
+          description: Successfully logged unit access
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+      security:
+        - CognitoAuthorizer: []
+      x-amazon-apigateway-integration:
+        httpMethod: POST
+        uri: 
+          Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ManageStorageUnitFunction.Arn}/invocations'
+        type: aws_proxy
+        passthroughBehavior: when_no_match
+
+  /payments/method:
+    post:
+      summary: Manage payment method
+      operationId: managePaymentMethod
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - payment_method_id
+              properties:
+                payment_method_id:
+                  type: string
+                type:
+                  type: string
+                  enum: ['card', 'eft']
+                  default: 'card'
+      responses:
+        '200':
+          description: Successfully added payment method
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+      security:
+        - CognitoAuthorizer: []
+      x-amazon-apigateway-integration:
+        httpMethod: POST
+        uri: 
+          Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PaymentManagementFunction.Arn}/invocations'
+        type: aws_proxy
+        passthroughBehavior: when_no_match
+
+  /payments/discount:
+    post:
+      summary: Apply rental discount
+      operationId: applyRentalDiscount
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - unit_id
+              properties:
+                unit_id:
+                  type: string
+                discount_type:
+                  type: string
+                  enum: ['yearly', 'seasonal', 'marketing', 'standard']
+                  default: 'standard'
+      responses:
+        '200':
+          description: Successfully applied discount
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  original_rate:
+                    type: number
+                  discounted_rate:
+                    type: number
+                  discount_percentage:
+                    type: number
+      security:
+        - CognitoAuthorizer: []
+      x-amazon-apigateway-integration:
+        httpMethod: POST
+        uri: 
+          Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PaymentManagementFunction.Arn}/invocations'
+        type: aws_proxy
+        passthroughBehavior: when_no_match
+
+  /payments/cancel-rental:
+    post:
+      summary: Cancel storage unit rental
+      operationId: cancelRental
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rental_id
+              properties:
+                rental_id:
+                  type: string
+      responses:
+        '200':
+          description: Successfully initiated rental cancellation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                  notice_period_days:
+                    type: integer
+                  effective_date:
+                    type: string
+                    format: date-time
+      security:
+        - CognitoAuthorizer: []
+      x-amazon-apigateway-integration:
+        httpMethod: POST
+        uri: 
+          Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PaymentManagementFunction.Arn}/invocations'
+        type: aws_proxy
+        passthroughBehavior: when_no_match
+
+  /payments/process-billing:
+    post:
+      summary: Process recurring billing
+      operationId: processRecurringBilling
+      responses:
+        '200':
+          description: Successfully processed recurring billing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+      security:
+        - CognitoAuthorizer: []
+      x-amazon-apigateway-integration:
+        httpMethod: POST
+        uri: 
+          Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PaymentManagementFunction.Arn}/invocations'
+        type: aws_proxy
+        passthroughBehavior: when_no_match
+
+components:
+  schemas:
+    StorageUnit:
+      type: object
+      properties:
+        unit_id:
+          type: string
+        facility_id:
+          type: string
+        status:
+          type: string
+        size_sq_ft:
+          type: number
+        monthly_rate:
+          type: number
+
+  securitySchemes:
+    CognitoAuthorizer:
+      type: apiKey
+      name: Authorization
+      in: header
+      x-amazon-apigateway-authtype: cognito_user_pools
+      x-amazon-apigateway-authorizer:
+        providerARNs:
+          - Fn::Sub: arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPool}
+        type: cognito_user_pools
+
+x-amazon-apigateway-request-validators:
+  ValidateBody:
+    validateRequestParameters: false
+    validateRequestBody: true

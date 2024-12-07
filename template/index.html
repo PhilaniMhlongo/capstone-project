@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Book a Storage Unit</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <nav>
+                <button id="loginBtn">Login</button>
+                <button id="logoutBtn">Logout</button>
+            </nav>
+        </header>
+
+        <main>
+            <section id="booking-section">
+                <h1>Book a Storage Unit</h1>
+                <form id="bookingForm">
+                    <div class="form-group">
+                        <label for="unitId">Unit ID</label>
+                        <input type="text" id="unitId" name="unitId" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Duration</label>
+                        <select id="duration" name="duration">
+                            <option value="1day">1 Day</option>
+                            <option value="1month">1 Month</option>
+                            <option value="6months">6 Months</option>
+                            <option value="1year">1 Year</option>
+                            <option value="indefinite">Indefinite</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Billing Option</label>
+                        <select id="billingOption" name="billingOption">
+                            <option value="monthly">Monthly</option>
+                            <option value="quarterly">Quarterly</option>
+                            <option value="yearly">Yearly</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="startDate">Start Date</label>
+                        <input type="date" id="startDate" name="startDate" required>
+                    </div>
+
+                    <button type="submit" class="btn-book-now">Book Now</button>
+                </form>
+
+                <div id="responseMessage" class="message"></div>
+            </section>
+        </main>
+
+        <div id="loginModal" class="login-modal">
+            <div class="modal-content">
+                <h2>Login</h2>
+                <form id="loginForm">
+                    <div class="form-group">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" required>
+                    </div>
+                    <button type="submit">Login</button>
+                </form>
+            </div>
+        </div>
+
+        <div id="overlay" class="overlay"></div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
