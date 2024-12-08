@@ -165,9 +165,148 @@ paths:
         
 
 
+  /units/{unitId}/status:
+    put:
+      summary: Update storage unit status (for support staff)
+      parameters:
+        - name: unitId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+        - name: X-Amz-Target
+          in: header
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - status
+              properties:
+                status:
+                  type: string
+                  enum: [Available, Unavailable, Reserved, Cancelling, Problem]
+      responses:
+        "200":
+          description: Successfully updated unit status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnitStatusUpdateResponse"
+      security:
+        - CognitoAuthorizer: []
+      x-amazon-apigateway-integration:
+        httpMethod: "POST"
+        uri: 
+          Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ManageStorageUnitFunction.Arn}/invocations'
+        passthroughBehavior: "when_no_match"
+        type: "aws_proxy"
+
+  /units/{unitId}/share:
+    post:
+      summary: Share storage unit access with another user
+      parameters:
+        - name: unitId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+        - name: X-Amz-Target
+          in: header
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - shared_user_id
+              properties:
+                shared_user_id:
+                  type: string
+                  description: User ID to share access with
+                start_date:
+                  type: string
+                  format: date-time
+                  description: Optional start date for shared access
+                end_date:
+                  type: string
+                  format: date-time
+                  description: Optional end date for shared access
+      responses:
+        "200":
+          description: Successfully shared unit access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnitAccessShareResponse"
+      security:
+        - CognitoAuthorizer: []
+      x-amazon-apigateway-integration:
+        httpMethod: "POST"
+        uri: 
+          Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ManageStorageUnitFunction.Arn}/invocations'
+        passthroughBehavior: "when_no_match"
+        type: "aws_proxy"
+
+  /units/{unitId}/access:
+    post:
+      summary: Log access to a storage unit
+      parameters:
+        - name: unitId
+          in: path
+          required: true
+          schema:
+            type: string
+        - name: Content-Type
+          in: header
+          schema:
+            type: string
+        - name: X-Amz-Target
+          in: header
+          schema:
+            type: string
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - unit_id
+              properties:
+                unit_id:
+                  type: string
+                  description: Identifier of the storage unit being accessed
+      responses:
+        "200":
+          description: Successfully logged unit access
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UnitAccessLogResponse"
+      security:
+        - CognitoAuthorizer: []
+      x-amazon-apigateway-integration:
+        httpMethod: "POST"
+        uri: 
+          Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${ManageStorageUnitFunction.Arn}/invocations'
+        passthroughBehavior: "when_no_match"
+        type: "aws_proxy"
+
 components:
   schemas:
-<<<<<<< HEAD:backend/src/userprofile/api.yaml
     StorageUnitCreateModel:
       type: object
       required:
@@ -240,12 +379,12 @@ components:
           type: string
           description: Confirmation message for access logging
           
-=======
->>>>>>> 539f046c5c6f35cd44cc61214fad2662e54a8169:backend/src/userprofile/api.yml
     StorageUnitBookingInput:
       type: object
       required:
         - unit_id
+        - duration
+        - billingOption
       properties:
         unit_id:
           type: string
