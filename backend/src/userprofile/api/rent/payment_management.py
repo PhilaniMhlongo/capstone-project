@@ -4,6 +4,7 @@ import uuid
 from datetime import datetime, timedelta
 import boto3
 from aws_lambda_powertools import Logger, Tracer
+from decimal import Decimal
 
 # Globals
 logger = Logger()
@@ -213,7 +214,7 @@ def apply_rental_discount(event, context):
     logger.info("Applying rental discounts")
     
     detail = json.loads(event['body'])
-    unit_id = detail['unit_id']
+    rental_id = detail['rental_id']
     discount_type = detail.get('discount_type', 'standard')
     
     # Define discount rates
@@ -225,8 +226,8 @@ def apply_rental_discount(event, context):
     }
     
     # Retrieve rental and unit information
-    rental_response = rentals_table.get_item(
-        Key={'unit_id': unit_id}
+    rental_response=rentals_table.get_item(
+        Key={'rental_id': rental_id}
     )
     rental = rental_response.get('Item')
     
@@ -237,8 +238,8 @@ def apply_rental_discount(event, context):
         }
     
     # Calculate discounted rate
-    original_rate = rental.get('monthly_rate', 100)
-    discount_rate = discount_rates.get(discount_type, 0.05)
+    original_rate = Decimal(rental.get('monthly_rate', 100))
+    discount_rate = Decimal(discount_rates.get(discount_type, 0.05))
     discounted_rate = original_rate * (1 - discount_rate)
     
     # Update rental with discounted rate
@@ -256,9 +257,9 @@ def apply_rental_discount(event, context):
     return {
         "statusCode": 200,
         "body": json.dumps({
-            "original_rate": original_rate,
-            "discounted_rate": discounted_rate,
-            "discount_percentage": discount_rate * 100
+            "original_rate": float(original_rate),
+            "discounted_rate": float(discounted_rate),
+            "discount_percentage": float(discount_rate * 100)
         })
     }
 

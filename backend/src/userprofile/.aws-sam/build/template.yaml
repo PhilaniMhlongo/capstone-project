@@ -236,6 +236,13 @@ Resources:
             Method: post
             RestApiId:
               Ref: ProfileApiGateway
+        ApplyDiscount:
+          Type: Api
+          Properties:
+            Path: /discount
+            Method: post
+            RestApiId:
+              Ref: ProfileApiGateway
     Metadata:
       SamResourceId: PaymentManagementFunction
   RecurringBillingScheduleRule:

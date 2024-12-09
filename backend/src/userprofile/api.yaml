@@ -360,62 +360,62 @@ paths:
         passthroughBehavior: "when_no_match"
         type: "aws_proxy"
 
-  # /discount:
-  #   post:
-  #     summary: Apply discount to a storage unit rental
-  #     requestBody:
-  #       content:
-  #         application/json:
-  #           schema:
-  #             type: object
-  #             required:
-  #               - unit_id
-  #             properties:
-  #               unit_id:
-  #                 type: string
-  #                 description: Unique identifier of the storage unit
-  #               discount_type:
-  #                 type: string
-  #                 enum: [yearly, seasonal, marketing, standard]
-  #                 default: standard
-  #                 description: Type of discount to apply
-  #     responses:
-  #       "200":
-  #         description: Successfully applied discount
-  #         content:
-  #           application/json:
-  #             schema:
-  #               type: object
-  #               properties:
-  #                 original_rate:
-  #                   type: number
-  #                   description: Original monthly rental rate
-  #                 discounted_rate:
-  #                   type: number
-  #                   description: Discounted monthly rental rate
-  #                 discount_percentage:
-  #                   type: number
-  #                   description: Percentage of discount applied
-  #       "400":
-  #         description: Invalid input
-  #         content:
-  #           application/json:
-  #             schema:
-  #               $ref: "#/components/schemas/ErrorResponse"
-  #       "404":
-  #         description: Rental not found
-  #         content:
-  #           application/json:
-  #             schema:
-  #               $ref: "#/components/schemas/ErrorResponse"
-  #     security:
-  #       - CognitoAuthorizer: []
-  #     x-amazon-apigateway-integration:
-  #       httpMethod: POST
-  #       uri: 
-  #         Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PaymentManagementFunction.Arn}/invocations'
-  #       passthroughBehavior: "when_no_match"
-  #       type: "aws_proxy"
+  /discount:
+    post:
+      summary: Apply discount to a storage unit rental
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rental_id
+              properties:
+                rental_id:
+                  type: string
+                  description: Unique identifier of the storage unit
+                discount_type:
+                  type: string
+                  enum: [yearly, seasonal, marketing, standard]
+                  default: standard
+                  description: Type of discount to apply
+      responses:
+        "200":
+          description: Successfully applied discount
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  original_rate:
+                    type: number
+                    description: Original monthly rental rate
+                  discounted_rate:
+                    type: number
+                    description: Discounted monthly rental rate
+                  discount_percentage:
+                    type: number
+                    description: Percentage of discount applied
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Rental not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      security:
+        - CognitoAuthorizer: []
+      x-amazon-apigateway-integration:
+        httpMethod: POST
+        uri: 
+          Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PaymentManagementFunction.Arn}/invocations'
+        passthroughBehavior: "when_no_match"
+        type: "aws_proxy"
 
   # /cancel-rental:
   #   post:
