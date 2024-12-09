@@ -22,6 +22,7 @@ Globals:
       - !Sub arn:aws:lambda:${AWS::Region}:017000801446:layer:AWSLambdaPowertoolsPython:20
   Api:
     TracingEnabled: true
+    
 
 Resources:
   StorageUnitsTable:
@@ -36,7 +37,21 @@ Resources:
           KeyType: "HASH"
       BillingMode: PAY_PER_REQUEST
 
-  
+  PaymentsTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub ${AWS::StackName}-PaymentsTable
+      AttributeDefinitions:
+        - AttributeName: "user_id"
+          AttributeType: "S"
+        - AttributeName: "payment_id"
+          AttributeType: "S"
+      KeySchema:
+        - AttributeName: "user_id"
+          KeyType: "HASH"
+        - AttributeName: "payment_id"
+          KeyType: "RANGE"
+      BillingMode: PAY_PER_REQUEST
 
   RentalsTable:
     Type: AWS::DynamoDB::Table
@@ -86,6 +101,19 @@ Resources:
         Variables:
           STORAGE_UNITS_TABLE: !Ref StorageUnitsTable
           USER_POOL_ID: !Ref UserPool
+      Events:
+        CreateStorageUnit:
+          Type: Api
+          Properties:
+            Path: /units
+            Method: post
+            RestApiId: !Ref ProfileApiGateway
+        OptionsCreateStorageUnit:
+          Type: Api
+          Properties:
+            Path: /units
+            Method: options
+            RestApiId: !Ref ProfileApiGateway
 
   ListStorageUnitsFunction:
     Type: AWS::Serverless::Function
@@ -94,6 +122,7 @@ Resources:
       Handler: list_units.lambda_handler
       Runtime: python3.9
       Tracing: Active
+      
       Policies:
         DynamoDBReadPolicy:
           TableName: !Ref StorageUnitsTable
@@ -104,6 +133,19 @@ Resources:
           POWERTOOLS_SERVICE_NAME: storage-units
           POWERTOOLS_METRICS_NAMESPACE: StorageService
           LOG_LEVEL: INFO
+      Events:
+        GetStorageUnits:
+          Type: Api
+          Properties:
+            Path: /units
+            Method: get
+            RestApiId: !Ref ProfileApiGateway
+        OptionsStorageUnits:
+          Type: Api
+          Properties:
+            Path: /units
+            Method: options
+            RestApiId: !Ref ProfileApiGateway
       
 
   BookStorageUnitFunction:
@@ -122,6 +164,7 @@ Resources:
         Variables:
           STORAGE_UNITS_TABLE: !Ref StorageUnitsTable
           RENTALS_TABLE: !Ref RentalsTable
+          RENTAL_EVENTS_QUEUE: !Ref RentalEventsQueue
       Events:
          BookStorageUnit:
           Type: Api
@@ -145,6 +188,79 @@ Resources:
         - AttributeName: "timestamp"
           KeyType: "RANGE"
       BillingMode: PAY_PER_REQUEST
+
+  PaymentManagementFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: api/rent  # Assuming the script is in this directory
+      Handler: payment_management.lambda_handler
+      Runtime: python3.9
+      Tracing: Active
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref PaymentsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RentalsTable
+        - DynamoDBCrudPolicy:
+            TableName: !Ref StorageUnitsTable
+      Environment:
+        Variables:
+          RENTALS_TABLE: !Ref RentalsTable
+          PAYMENTS_TABLE: !Ref PaymentsTable
+          UNIT_TABLE: !Ref StorageUnitsTable
+          POWERTOOLS_SERVICE_NAME: payment-management
+          LOG_LEVEL: INFO
+      Events:
+        ManagePaymentMethod:
+          Type: Api
+          Properties:
+            Path: /payment-method
+            Method: post
+            RestApiId: !Ref ProfileApiGateway
+        ApplyDiscount:
+          Type: Api
+          Properties:
+            Path: /discount
+            Method: post
+            RestApiId: !Ref ProfileApiGateway
+        # CancelRental:
+        #   Type: Api
+        #   Properties:
+        #     Path: /cancel-rental
+        #     Method: post
+        #     RestApiId: !Ref ProfileApiGateway
+        # ProcessRecurringBilling:
+        #   Type: Api
+        #   Properties:
+        #     Path: /process-billing
+        #     Method: post
+        #     RestApiId: !Ref ProfileApiGateway
+
+        # PrePayment:
+        #   Type: Api
+        #   Properties:
+        #     Path: /pre-payment
+        #     Method: post
+        #     RestApiId: !Ref ProfileApiGateway
+
+  RecurringBillingScheduleRule:
+    Type: AWS::Events::Rule
+    Properties:
+      Description: Monthly trigger for recurring billing
+      ScheduleExpression: cron(0 0 1 * ? *)  # First day of each month at midnight
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt PaymentManagementFunction.Arn
+          Id: RecurringBillingTrigger
+          Input: '{"httpMethod": "POST", "path": "/process-billing"}'
+
+  RecurringBillingSchedulePermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref PaymentManagementFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt RecurringBillingScheduleRule.Arn
 
   # Add this SNS Topic resource
   UnitAccessNotificationTopic:
@@ -199,7 +315,33 @@ Resources:
             Method: post
             RestApiId: !Ref ProfileApiGateway
 
-
+  RentalEventProcessorFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: api/rent  # Assuming the script is in this directory
+      Handler: process_rental_events.lambda_handler
+      Runtime: python3.9
+      Tracing: Active
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref RentalsTable
+        - EventBridgePutEventsPolicy:
+            EventBusName: !Ref UnitBus
+        - SQSPollerPolicy:
+            QueueName: !Ref RentalEventsQueue
+      Environment:
+        Variables:
+          RENTALS_TABLE: !Ref RentalsTable
+          UNIT_BUS: !Ref UnitBus
+          POWERTOOLS_SERVICE_NAME: rental-event-processor
+          LOG_LEVEL: INFO
+      Events:
+        SQSEvent:
+          Type: SQS
+          Properties:
+            Queue: !GetAtt RentalEventsQueue.Arn
+            BatchSize: 10
+            Enabled: true
 
   UnitBus:
     Type: AWS::Events::EventBus
@@ -250,6 +392,7 @@ Resources:
         - LoggingLevel: INFO
           ResourcePath: '/*' # allows for logging on any resource
           HttpMethod: '*' # allows for logging on any method
+      
       DefinitionBody:
         Fn::Transform:
           Name: AWS::Include
@@ -264,7 +407,7 @@ Resources:
       Action: "lambda:InvokeFunction"
       FunctionName: !Ref ListStorageUnitsFunction
       Principal: "apigateway.amazonaws.com"
-      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ProfileApiGateway}/*/GET/units'
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ProfileApiGateway}/*/OPTIONS/units'
 
   CreateStorageUnitPermission:
     Type: AWS::Lambda::Permission
@@ -272,8 +415,22 @@ Resources:
       Action: "lambda:InvokeFunction"
       FunctionName: !Ref CreateStorageUnitFunction
       Principal: "apigateway.amazonaws.com"
-      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ProfileApiGateway}/*/POST/units'
+      SourceArn: !Sub 'arn:aws:execute-api:${AWS::Region}:${AWS::AccountId}:${ProfileApiGateway}/*/OPTIONS/units'
 
+
+  RentalEventsQueue:
+    Type: AWS::SQS::Queue
+    Properties:
+      QueueName: !Sub "${AWS::StackName}-RentalEventsQueue"
+      VisibilityTimeout: 30  # Should match Lambda function timeout
+
+  RentalEventProcessorSQSPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: "lambda:InvokeFunction"
+      FunctionName: !Ref RentalEventProcessorFunction
+      Principal: "sqs.amazonaws.com"
+      SourceArn: !GetAtt RentalEventsQueue.Arn
 Outputs:
   UnitBus:
     Description: "Rent Unit Event Bus Output"
@@ -281,6 +438,17 @@ Outputs:
   # UnitTable:
   #   Description: "DynamoDB User Unit Table"
   #   Value: !Ref UserUnitTable
+
+  PaymentsTable:
+    Description: "DynamoDB Payments Table"
+    Value: !Ref PaymentsTable
+  PaymentManagementFunction:
+    Description: "Payment Management Lambda Function"
+    Value: !Ref PaymentManagementFunction
+
+  RentalEventsQueue:
+    Description: "SQS Queue for Rental Events"
+    Value: !Ref RentalEventsQueue
 
   AccessLogTable:
     Description: "DynamoDB Access Log Table"

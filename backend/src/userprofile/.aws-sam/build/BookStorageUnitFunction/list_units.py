@@ -43,7 +43,12 @@ def lambda_handler(event, context):
                     'error': 'Invalid query parameters',
                     'request_id': request_id,
                     'details': str(param_error)
-                })
+                }),
+            "headers": {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization"
+        }
             }
 
         # Verify required environment variables
@@ -56,7 +61,13 @@ def lambda_handler(event, context):
                     'error': 'Configuration error',
                     'request_id': request_id,
                     'details': 'Missing DynamoDB table name'
-                })
+                }),
+            "headers": {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization"
+        }
+
             }
 
         # Prepare DynamoDB table
@@ -71,7 +82,12 @@ def lambda_handler(event, context):
                     'error': 'Database access error',
                     'request_id': request_id,
                     'details': str(table_error)
-                })
+                }),
+            "headers": {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization"
+        }
             }
 
         # Prepare query parameters
@@ -102,7 +118,12 @@ def lambda_handler(event, context):
                     'error': 'Database query failed',
                     'request_id': request_id,
                     'details': str(query_error)
-                })
+                }),
+            "headers": {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization"
+        }
             }
 
         # Process and return results
@@ -122,7 +143,12 @@ def lambda_handler(event, context):
                     'scanned_count': response.get('ScannedCount', 0),
                     'last_evaluated_key': response.get('LastEvaluatedKey')
                 }
-            })
+            }),
+            "headers": {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization"
+        }
         }
 
     except Exception as unexpected_error:
@@ -137,5 +163,10 @@ def lambda_handler(event, context):
                 'error': 'Unexpected server error',
                 'request_id': request_id,
                 'details': str(unexpected_error)
-            })
+            }),
+            "headers": {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type, Authorization"
+        }
         }

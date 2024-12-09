@@ -2,6 +2,11 @@ openapi: 3.0.1
 info:
   title: rentals-service
   version: 2022-07-12T06:04:43Z
+x-amazon-apigateway-cors:
+  allow-origin: "'*'"
+  allow-methods: "'GET, POST, OPTIONS'"
+  allow-headers: "'Content-Type, Authorization'"
+  max-age: 3600
 paths:
  
   /units:
@@ -305,8 +310,264 @@ paths:
         passthroughBehavior: "when_no_match"
         type: "aws_proxy"
 
+  /payment-method:
+    post:
+      summary: Add or update customer payment method
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - type
+              properties:
+                type:
+                  type: string
+                  enum: [card, eft]
+                  default: card
+                  description: Type of payment method
+                last_four_digits:
+                  type: string
+                  description: Last four digits of the payment card
+      responses:
+        "200":
+          description: Successfully added payment method
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+        "400":
+          description: Invalid input
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server-side error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      security:
+        - CognitoAuthorizer: []
+      x-amazon-apigateway-integration:
+        httpMethod: POST
+        uri: 
+          Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PaymentManagementFunction.Arn}/invocations'
+        passthroughBehavior: "when_no_match"
+        type: "aws_proxy"
+
+  # /discount:
+  #   post:
+  #     summary: Apply discount to a storage unit rental
+  #     requestBody:
+  #       content:
+  #         application/json:
+  #           schema:
+  #             type: object
+  #             required:
+  #               - unit_id
+  #             properties:
+  #               unit_id:
+  #                 type: string
+  #                 description: Unique identifier of the storage unit
+  #               discount_type:
+  #                 type: string
+  #                 enum: [yearly, seasonal, marketing, standard]
+  #                 default: standard
+  #                 description: Type of discount to apply
+  #     responses:
+  #       "200":
+  #         description: Successfully applied discount
+  #         content:
+  #           application/json:
+  #             schema:
+  #               type: object
+  #               properties:
+  #                 original_rate:
+  #                   type: number
+  #                   description: Original monthly rental rate
+  #                 discounted_rate:
+  #                   type: number
+  #                   description: Discounted monthly rental rate
+  #                 discount_percentage:
+  #                   type: number
+  #                   description: Percentage of discount applied
+  #       "400":
+  #         description: Invalid input
+  #         content:
+  #           application/json:
+  #             schema:
+  #               $ref: "#/components/schemas/ErrorResponse"
+  #       "404":
+  #         description: Rental not found
+  #         content:
+  #           application/json:
+  #             schema:
+  #               $ref: "#/components/schemas/ErrorResponse"
+  #     security:
+  #       - CognitoAuthorizer: []
+  #     x-amazon-apigateway-integration:
+  #       httpMethod: POST
+  #       uri: 
+  #         Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PaymentManagementFunction.Arn}/invocations'
+  #       passthroughBehavior: "when_no_match"
+  #       type: "aws_proxy"
+
+  # /cancel-rental:
+  #   post:
+  #     summary: Cancel a storage unit rental
+  #     requestBody:
+  #       content:
+  #         application/json:
+  #           schema:
+  #             type: object
+  #             required:
+  #               - rental_id
+  #             properties:
+  #               rental_id:
+  #                 type: string
+  #                 description: Unique identifier of the rental to cancel
+  #     responses:
+  #       "200":
+  #         description: Successfully initiated rental cancellation
+  #         content:
+  #           application/json:
+  #             schema:
+  #               type: object
+  #               properties:
+  #                 message:
+  #                   type: string
+  #                   description: Cancellation confirmation message
+  #                 notice_period_days:
+  #                   type: integer
+  #                   description: Number of days in the notice period
+  #                 effective_date:
+  #                   type: string
+  #                   format: date-time
+  #                   description: Date when cancellation becomes effective
+  #       "403":
+  #         description: Unauthorized or rental not found
+  #         content:
+  #           application/json:
+  #             schema:
+  #               $ref: "#/components/schemas/ErrorResponse"
+  #       "500":
+  #         description: Server-side error
+  #         content:
+  #           application/json:
+  #             schema:
+  #               $ref: "#/components/schemas/ErrorResponse"
+  #     security:
+  #       - CognitoAuthorizer: []
+  #     x-amazon-apigateway-integration:
+  #       httpMethod: POST
+  #       uri: 
+  #         Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PaymentManagementFunction.Arn}/invocations'
+  #       passthroughBehavior: "when_no_match"
+  #       type: "aws_proxy"
+
+  # /process-billing:
+  #   post:
+  #     summary: Process recurring billing for active rentals (Admin/System only)
+  #     responses:
+  #       "200":
+  #         description: Successfully processed recurring billing
+  #         content:
+  #           application/json:
+  #             schema:
+  #               type: object
+  #               properties:
+  #                 message:
+  #                   type: string
+  #                   description: Billing processing confirmation
+  #       "500":
+  #         description: Server-side error
+  #         content:
+  #           application/json:
+  #             schema:
+  #               $ref: "#/components/schemas/ErrorResponse"
+  #     security:
+  #       - CognitoAuthorizer: []
+  #     x-amazon-apigateway-integration:
+  #       httpMethod: POST
+  #       uri: 
+  #         Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PaymentManagementFunction.Arn}/invocations'
+  #       passthroughBehavior: "when_no_match"
+  #       type: "aws_proxy"
+
+  # /pre-payment:
+  #   post:
+  #     summary: Process recurring billing for active rentals (Admin/System only)
+  #     responses:
+  #       "200":
+  #         description: Successfully processed recurring billing
+  #         content:
+  #           application/json:
+  #             schema:
+  #               type: object
+  #               properties:
+  #                 message:
+  #                   type: string
+  #                   description: Billing processing confirmation
+  #       "500":
+  #         description: Server-side error
+  #         content:
+  #           application/json:
+  #             schema:
+  #               $ref: "#/components/schemas/ErrorResponse"
+  #     security:
+  #       - CognitoAuthorizer: []
+  #     x-amazon-apigateway-integration:
+  #       httpMethod: POST
+  #       uri: 
+  #         Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PaymentManagementFunction.Arn}/invocations'
+  #       passthroughBehavior: "when_no_match"
+  #       type: "aws_proxy"
+
+
 components:
   schemas:
+    RentalEventModel:
+      type: object
+      required:
+        - event_type
+        - detail
+      properties:
+        event_type:
+          type: string
+          enum: 
+            - rental.booking.requested
+            - rental.booking.confirmed
+            - rental.booking.failed
+          description: Type of rental event
+        detail:
+          type: object
+          properties:
+            rental_id:
+              type: string
+              description: Unique identifier for the rental
+            unit_id:
+              type: string
+              description: Identifier of the storage unit
+            user_id:
+              type: string
+              description: User who initiated the rental
+            booking_date:
+              type: string
+              format: date-time
+              description: Timestamp of booking request
+            status:
+              type: string
+              enum: 
+                - PENDING
+                - CONFIRMED
+                - FAILED
+              description: Current status of the rental event
+              
     StorageUnitCreateModel:
       type: object
       required:
@@ -417,7 +678,19 @@ components:
         unit_id:
           type: string
           description: Identifier of the booked storage unit
-
+    RentalEventErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Detailed error message
+        rental_id:
+          type: string
+          description: Rental identifier if available
+        event_type:
+          type: string
+          description: Type of event that failed
+          
     ErrorResponse:
       type: object
       properties:

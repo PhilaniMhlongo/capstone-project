@@ -11,8 +11,10 @@ logger = Logger()
 tracer = Tracer(service="StorageApp")
 storage_units_table = os.getenv('STORAGE_UNITS_TABLE')
 rentals_table = os.getenv('RENTALS_TABLE')
-dynamodb = boto3.resource('dynamodb')
+RENTAL_EVENTS_QUEUE = os.getenv('RENTAL_EVENTS_QUEUE')
 
+dynamodb = boto3.resource('dynamodb')
+sqs_client = boto3.client('sqs')
 # Enhanced logging configuration
 logger.setLevel('INFO')
 
@@ -187,6 +189,12 @@ def book_storage_unit(event, context):
                     "details": str(update_error)
                 })
             }
+        # Publish booking event
+        publish_booking_event({
+            'unit_id': unit_id,
+            'user_id': user_id,
+            'rental_id': rental_id
+        })
         
         logger.info(f"Storage unit {unit_id} booked by user {user_id}")
         
@@ -223,3 +231,25 @@ def book_storage_unit(event, context):
 
 def lambda_handler(event, context):
     return book_storage_unit(event, context)
+
+
+@tracer.capture_method
+def publish_booking_event(booking_details):
+    """Publish an event to the SQS queue for downstream processing."""
+    try:
+        sqs_client.send_message(
+            QueueUrl=RENTAL_EVENTS_QUEUE,
+            MessageBody=json.dumps({
+                'detail-type': 'rental.booking.requested',
+                'detail': {
+                    'unit_id': booking_details['unit_id'],
+                    'user_id': booking_details['user_id'],
+                    'rental_id': booking_details['rental_id'],
+                    'booking_date': datetime.utcnow().isoformat()
+                }
+            })
+        )
+        logger.info(f"Published booking event for rental {booking_details['rental_id']}")
+    except Exception as e:
+        logger.error(f"Failed to publish booking event: {e}")
+        raise

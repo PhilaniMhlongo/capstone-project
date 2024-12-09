@@ -7,3 +7,4 @@ region = "eu-west-1"
 capabilities = "CAPABILITY_IAM"
 parameter_overrides = "UserPool=\"eu-west-1_GpjXkqzK8\" Service=\"userprofile\" Stage=\"prod\""
 image_repositories = []
+confirm_changeset = true
