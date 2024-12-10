@@ -417,116 +417,116 @@ paths:
         passthroughBehavior: "when_no_match"
         type: "aws_proxy"
 
-  # /cancel-rental:
-  #   post:
-  #     summary: Cancel a storage unit rental
-  #     requestBody:
-  #       content:
-  #         application/json:
-  #           schema:
-  #             type: object
-  #             required:
-  #               - rental_id
-  #             properties:
-  #               rental_id:
-  #                 type: string
-  #                 description: Unique identifier of the rental to cancel
-  #     responses:
-  #       "200":
-  #         description: Successfully initiated rental cancellation
-  #         content:
-  #           application/json:
-  #             schema:
-  #               type: object
-  #               properties:
-  #                 message:
-  #                   type: string
-  #                   description: Cancellation confirmation message
-  #                 notice_period_days:
-  #                   type: integer
-  #                   description: Number of days in the notice period
-  #                 effective_date:
-  #                   type: string
-  #                   format: date-time
-  #                   description: Date when cancellation becomes effective
-  #       "403":
-  #         description: Unauthorized or rental not found
-  #         content:
-  #           application/json:
-  #             schema:
-  #               $ref: "#/components/schemas/ErrorResponse"
-  #       "500":
-  #         description: Server-side error
-  #         content:
-  #           application/json:
-  #             schema:
-  #               $ref: "#/components/schemas/ErrorResponse"
-  #     security:
-  #       - CognitoAuthorizer: []
-  #     x-amazon-apigateway-integration:
-  #       httpMethod: POST
-  #       uri: 
-  #         Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PaymentManagementFunction.Arn}/invocations'
-  #       passthroughBehavior: "when_no_match"
-  #       type: "aws_proxy"
+  /cancel-rental:
+    post:
+      summary: Cancel a storage unit rental
+      requestBody:
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - rental_id
+              properties:
+                rental_id:
+                  type: string
+                  description: Unique identifier of the rental to cancel
+      responses:
+        "200":
+          description: Successfully initiated rental cancellation
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Cancellation confirmation message
+                  notice_period_days:
+                    type: integer
+                    description: Number of days in the notice period
+                  effective_date:
+                    type: string
+                    format: date-time
+                    description: Date when cancellation becomes effective
+        "403":
+          description: Unauthorized or rental not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: Server-side error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      security:
+        - CognitoAuthorizer: []
+      x-amazon-apigateway-integration:
+        httpMethod: POST
+        uri: 
+          Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PaymentManagementFunction.Arn}/invocations'
+        passthroughBehavior: "when_no_match"
+        type: "aws_proxy"
 
-  # /process-billing:
-  #   post:
-  #     summary: Process recurring billing for active rentals (Admin/System only)
-  #     responses:
-  #       "200":
-  #         description: Successfully processed recurring billing
-  #         content:
-  #           application/json:
-  #             schema:
-  #               type: object
-  #               properties:
-  #                 message:
-  #                   type: string
-  #                   description: Billing processing confirmation
-  #       "500":
-  #         description: Server-side error
-  #         content:
-  #           application/json:
-  #             schema:
-  #               $ref: "#/components/schemas/ErrorResponse"
-  #     security:
-  #       - CognitoAuthorizer: []
-  #     x-amazon-apigateway-integration:
-  #       httpMethod: POST
-  #       uri: 
-  #         Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PaymentManagementFunction.Arn}/invocations'
-  #       passthroughBehavior: "when_no_match"
-  #       type: "aws_proxy"
+  /process-billing:
+    post:
+      summary: Process recurring billing for active rentals (Admin/System only)
+      responses:
+        "200":
+          description: Successfully processed recurring billing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Billing processing confirmation
+        "500":
+          description: Server-side error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      security:
+        - CognitoAuthorizer: []
+      x-amazon-apigateway-integration:
+        httpMethod: POST
+        uri: 
+          Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PaymentManagementFunction.Arn}/invocations'
+        passthroughBehavior: "when_no_match"
+        type: "aws_proxy"
 
-  # /pre-payment:
-  #   post:
-  #     summary: Process recurring billing for active rentals (Admin/System only)
-  #     responses:
-  #       "200":
-  #         description: Successfully processed recurring billing
-  #         content:
-  #           application/json:
-  #             schema:
-  #               type: object
-  #               properties:
-  #                 message:
-  #                   type: string
-  #                   description: Billing processing confirmation
-  #       "500":
-  #         description: Server-side error
-  #         content:
-  #           application/json:
-  #             schema:
-  #               $ref: "#/components/schemas/ErrorResponse"
-  #     security:
-  #       - CognitoAuthorizer: []
-  #     x-amazon-apigateway-integration:
-  #       httpMethod: POST
-  #       uri: 
-  #         Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PaymentManagementFunction.Arn}/invocations'
-  #       passthroughBehavior: "when_no_match"
-  #       type: "aws_proxy"
+  /pre-payment:
+    post:
+      summary: Process recurring billing for active rentals (Admin/System only)
+      responses:
+        "200":
+          description: Successfully processed recurring billing
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Billing processing confirmation
+        "500":
+          description: Server-side error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+      security:
+        - CognitoAuthorizer: []
+      x-amazon-apigateway-integration:
+        httpMethod: POST
+        uri: 
+          Fn::Sub: 'arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/${PaymentManagementFunction.Arn}/invocations'
+        passthroughBehavior: "when_no_match"
+        type: "aws_proxy"
 
 
 components:

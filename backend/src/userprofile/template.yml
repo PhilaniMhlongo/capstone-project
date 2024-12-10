@@ -160,6 +160,11 @@ Resources:
             TableName: !Ref StorageUnitsTable
         - DynamoDBCrudPolicy:
             TableName: !Ref RentalsTable
+        - Statement:
+          - Effect: Allow
+            Action:
+              - sqs:SendMessage
+            Resource: !GetAtt RentalEventsQueue.Arn
       Environment:
         Variables:
           STORAGE_UNITS_TABLE: !Ref StorageUnitsTable
@@ -223,25 +228,25 @@ Resources:
             Path: /discount
             Method: post
             RestApiId: !Ref ProfileApiGateway
-        # CancelRental:
-        #   Type: Api
-        #   Properties:
-        #     Path: /cancel-rental
-        #     Method: post
-        #     RestApiId: !Ref ProfileApiGateway
-        # ProcessRecurringBilling:
-        #   Type: Api
-        #   Properties:
-        #     Path: /process-billing
-        #     Method: post
-        #     RestApiId: !Ref ProfileApiGateway
+        CancelRental:
+          Type: Api
+          Properties:
+            Path: /cancel-rental
+            Method: post
+            RestApiId: !Ref ProfileApiGateway
+        ProcessRecurringBilling:
+          Type: Api
+          Properties:
+            Path: /process-billing
+            Method: post
+            RestApiId: !Ref ProfileApiGateway
 
-        # PrePayment:
-        #   Type: Api
-        #   Properties:
-        #     Path: /pre-payment
-        #     Method: post
-        #     RestApiId: !Ref ProfileApiGateway
+        PrePayment:
+          Type: Api
+          Properties:
+            Path: /pre-payment
+            Method: post
+            RestApiId: !Ref ProfileApiGateway
 
   RecurringBillingScheduleRule:
     Type: AWS::Events::Rule

@@ -157,7 +157,7 @@ def book_storage_unit(event, context):
                     'start_date': start_date.isoformat(),
                     'end_date': end_date.isoformat() if end_date else None,
                     'billing_option': billing_option,
-                    'status': 'Reserved'
+                    'availabilityStatus': 'Reserved'
                 }
             )
         except Exception as put_error:

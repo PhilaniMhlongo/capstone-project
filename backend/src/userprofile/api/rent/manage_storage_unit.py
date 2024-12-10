@@ -25,7 +25,7 @@ def update_unit_status(event, context):
     
     detail = event['detail']
     unit_id = detail['unit_id']
-    new_status = detail['status']
+    new_status = detail['availabilityStatus']
     
     valid_statuses = ['Available', 'Unavailable', 'Reserved', 'Cancelling', 'Problem']
     if new_status not in valid_statuses:
@@ -35,12 +35,13 @@ def update_unit_status(event, context):
         }
     
     units_table.update_item(
-        Key={'unit_id': unit_id},
-        UpdateExpression='SET status = :status',
-        ExpressionAttributeValues={
-            ':status': new_status
-        }
-    )
+                Key={'unit_id': unit_id},
+                UpdateExpression='SET availabilityStatus = :status',
+                ExpressionAttributeValues={
+                    ':status': new_status
+                },
+                ReturnValues='UPDATED_NEW'
+            )
     
     logger.info(f"Unit {unit_id} status updated to {new_status}")
     
@@ -81,7 +82,7 @@ def share_unit_access(event, context):
             'shared_user_id': shared_user_id,
             'start_date': start_date,
             'end_date': end_date,
-            'status': 'Active'
+            'Sharestatus': 'Active'
         }
     )
     

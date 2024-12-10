@@ -54,106 +54,159 @@ def process_pre_payment(event, context):
     """
     Process pre-payment for storage unit rental
     """
-    logger.info("Processing pre-payment")
-    
-    detail = json.loads(event['body'])
-    user_id = event['requestContext']['authorizer']['claims']['sub']
-    unit_id = detail['unit_id']
-    payment_duration = detail.get('duration', 'monthly')  # monthly, quarterly, yearly
-    
-    # Predefined pre-payment rates with discounts
-    prepay_rates = {
-        'monthly': {
-            'rate': 100,
-            'days': 30,
-            'discount': 0
-        },
-        'quarterly': {
-            'rate': 270,  # 10% off for 3 months
-            'days': 90,
-            'discount': 0.10
-        },
-        'yearly': {
-            'rate': 1080,  # 20% off for 12 months
-            'days': 365,
-            'discount': 0.20
+    try:
+        logger.info("Processing pre-payment")
+        detail = json.loads(event['body'])
+        user_id = event['requestContext']['authorizer']['claims']['sub']
+        unit_id = detail['unit_id']
+        payment_duration = detail.get('duration', 'monthly')
+
+        # Validate input
+        if not unit_id:
+            return {
+                "statusCode": 400,
+                "body": json.dumps({"error": "Unit ID is required"})
+            }
+
+        # Retrieve unit using primary key
+        try:
+            unit_response = unit_table.get_item(Key={'unit_id': unit_id})
+            unit = unit_response.get('Item')
+            
+            if not unit:
+                return {
+                    "statusCode": 404,
+                    "body": json.dumps({"error": "Unit not found"})
+                }
+        except Exception as e:
+            logger.error(f"Error retrieving unit: {e}")
+            return {
+                "statusCode": 500,
+                "body": json.dumps({"error": "Internal server error retrieving unit"})
+            }
+
+        # Retrieve payment method using user_id
+        try:
+            payment_method_response = payments_table.query(
+                KeyConditionExpression='user_id = :uid',
+                ExpressionAttributeValues={':uid': user_id}
+            )
+            payment_methods = payment_method_response.get('Items', [])
+            
+            if not payment_methods:
+                return {
+                    "statusCode": 400,
+                    "body": json.dumps({"error": "No payment method found"})
+                }
+        except Exception as e:
+            logger.error(f"Error retrieving payment method: {e}")
+            return {
+                "statusCode": 500,
+                "body": json.dumps({"error": "Internal server error retrieving payment method"})
+            }
+
+        # Predefined pre-payment rates
+        prepay_rates = {
+            'monthly': {
+                'rate': 100,
+                'days': 30,
+                'discount': 0
+            },
+            'quarterly': {
+                'rate': 270,  # 10% off for 3 months
+                'days': 90,
+                'discount': 0.10
+            },
+            'yearly': {
+                'rate': 1080,  # 20% off for 12 months
+                'days': 365,
+                'discount': 0.20
+            }
         }
-    }
-    
-    # Retrieve unit details
-    unit_response = unit_table.get_item(
-        Key={'unit_id': unit_id}
-    )
-    unit = unit_response.get('Item')
-    
-    
-    
-    # Verify payment method exists
-    payment_method = payments_table.get_item(
-        Key={'user_id': user_id}
-    ).get('Item')
-    
-    if not payment_method:
+
+        # Get payment details
+        payment_config = prepay_rates.get(payment_duration, prepay_rates['monthly'])
+        amount = payment_config['rate']
+
+        # Calculate rental dates
+        start_date = datetime.now()
+        end_date = start_date + timedelta(days=payment_config['days'])
+
+        # Create rental record
+        rental_id = str(uuid.uuid4())
+        try:
+            rentals_table.put_item(
+                Item={
+                    'rental_id': rental_id,
+                    'user_id': user_id,
+                    'unit_id': unit_id,
+                    'billing_option': 'pre-pay',
+                    'payment_duration': payment_duration,
+                    'monthly_rate': amount,
+                    'start_date': start_date.isoformat(),
+                    'end_date': end_date.isoformat(),
+                    'discount_percentage': payment_config['discount'] * 100,
+                    'Rentalstatus': 'Active'
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error creating rental record: {e}")
+            return {
+                "statusCode": 500,
+                "body": json.dumps({"error": "Failed to create rental record"})
+            }
+
+        # Log payment
+        try:
+            payments_table.put_item(
+                Item={
+                    'user_id': user_id,
+                    'payment_id': str(uuid.uuid4()),
+                    'rental_id': rental_id,
+                    'amount': amount,
+                    'payment_type': 'pre-pay',
+                    'payment_method_id': payment_methods[0]['payment_method_id'],  # Assuming first payment method
+                    'timestamp': datetime.now().isoformat(),
+                    'Paymentstatus': 'Successful'
+                }
+            )
+        except Exception as e:
+            logger.error(f"Error logging payment: {e}")
+            return {
+                "statusCode": 500,
+                "body": json.dumps({"error": "Failed to log payment"})
+            }
+
+        logger.info(f"Pre-payment processed for user {user_id}, unit {unit_id}")
+        return {
+            "statusCode": 200,
+            "body": json.dumps({
+                "message": "Pre-payment successful",
+                "rental_id": rental_id,
+                "amount": amount,
+                "duration": payment_duration,
+                "discount": payment_config['discount'] * 100,
+                "start_date": start_date.isoformat(),
+                "end_date": end_date.isoformat()
+            })
+        }
+
+    except json.JSONDecodeError:
         return {
             "statusCode": 400,
-            "body": json.dumps({"error": "No payment method found"})
+            "body": json.dumps({"error": "Invalid JSON payload"})
         }
-    
-    # Get payment details
-    payment_config = prepay_rates.get(payment_duration, prepay_rates['monthly'])
-    amount = payment_config['rate']
-    
-    # Calculate rental dates
-    start_date = datetime.now()
-    end_date = start_date + timedelta(days=payment_config['days'])
-    
-    # Create rental record
-    rental_id = str(uuid.uuid4())
-    rentals_table.put_item(
-        Item={
-            'rental_id': rental_id,
-            'user_id': user_id,
-            'unit_id': unit_id,
-            'billing_option': 'pre-pay',
-            'payment_duration': payment_duration,
-            'monthly_rate': amount,
-            'start_date': start_date.isoformat(),
-            'end_date': end_date.isoformat(),
-            'discount_percentage': payment_config['discount'] * 100,
-            'status': 'Active'
+    except KeyError as e:
+        return {
+            "statusCode": 400,
+            "body": json.dumps({"error": f"Missing required field: {str(e)}"})
         }
-    )
-    
-   
-    
-    # Log payment
-    payments_table.put_item(
-        Item={
-            'payment_id': str(uuid.uuid4()),
-            'user_id': user_id,
-            'rental_id': rental_id,
-            'amount': amount,
-            'payment_type': 'pre-pay',
-            'payment_method_id': payment_method['payment_id'],
-            'timestamp': datetime.now().isoformat(),
-            'status': 'Successful'
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}")
+        return {
+            "statusCode": 500,
+            "body": json.dumps({"error": "Unexpected internal error"})
         }
-    )
-    
-    logger.info(f"Pre-payment processed for user {user_id}, unit {unit_id}")
-    
-    return {
-        "statusCode": 200,
-        "body": json.dumps({
-            "message": "Pre-payment successful",
-            "rental_id": rental_id,
-            "amount": amount,
-            "duration": payment_duration,
-            "discount": payment_config['discount'] * 100,
-            "start_date": start_date.isoformat(),
-            "end_date": end_date.isoformat()
-        })
-    }
 
 @tracer.capture_method
 def process_recurring_billing(event, context):
@@ -185,7 +238,7 @@ def process_recurring_billing(event, context):
                     'rental_id': rental['rental_id'],
                     'amount': amount,
                     'timestamp': datetime.now().isoformat(),
-                    'status': 'Successful'
+                    'Paymentstatus': 'Successful'
                 }
             )
             
@@ -195,10 +248,11 @@ def process_recurring_billing(event, context):
             # Mark rental with payment issues
             rentals_table.update_item(
                 Key={'rental_id': rental['rental_id']},
-                UpdateExpression='SET availabilityStatus = :status',
+                UpdateExpression='SET Rentalstatus = :status',
                 ExpressionAttributeValues={
                     ':status': 'Problem'
-                }
+                },
+                ReturnValues='UPDATED_NEW'
             )
     
     return {
@@ -304,21 +358,24 @@ def cancel_rental(event, context):
     # Update rental status
     rentals_table.update_item(
         Key={'rental_id': rental_id},
-        UpdateExpression='SET status = :status, cancellation_date = :cancel_date, effective_date = :effective_date',
+        UpdateExpression='SET Rentalstatus = :status, cancellation_date = :cancel_date, effective_date = :effective_date',
         ExpressionAttributeValues={
             ':status': 'Cancelling',
             ':cancel_date': cancellation_date.isoformat(),
             ':effective_date': effective_date.isoformat()
-        }
+        },
+        ReturnValues='UPDATED_NEW'
     )
+    
     
     # Update unit status
     unit_table.update_item(
         Key={'unit_id': rental['unit_id']},
         UpdateExpression='SET availabilityStatus = :status',
-        ExpressionAttributeValues={
-            ':status': 'Available'
-        }
+                ExpressionAttributeValues={
+                    ':status': 'Available'
+                },
+                ReturnValues='UPDATED_NEW'
     )
     
     logger.info(f"Rental {rental_id} marked for cancellation")
@@ -342,12 +399,12 @@ def lambda_handler(event, context):
             return manage_payment_method(event, context)
         elif operation == 'POST' and '/discount' in path:
             return apply_rental_discount(event, context)
-        # elif operation == 'POST' and '/cancel-rental' in path:
-        #     return cancel_rental(event, context)
-        # elif operation == 'POST' and '/process-billing' in path:
-        #     return process_recurring_billing(event, context)
-        # elif operation == 'POST' and '/pre-payment' in path:
-        #     return process_pre_payment(event, context)
+        elif operation == 'POST' and '/cancel-rental' in path:
+            return cancel_rental(event, context)
+        elif operation == 'POST' and '/process-billing' in path:
+            return process_recurring_billing(event, context)
+        elif operation == 'POST' and '/pre-payment' in path:
+            return process_pre_payment(event, context)
         else:
             return {
                 "statusCode": 400,

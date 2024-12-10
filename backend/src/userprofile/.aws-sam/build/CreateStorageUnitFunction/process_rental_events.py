@@ -39,7 +39,7 @@ class RentalEventProcessor:
                 'unit_id': event_detail['unit_id'],
                 'user_id': event_detail['user_id'],
                 'booking_date': event_detail['booking_date'],
-                'status': 'PENDING'
+                'Rentalstatus': 'PENDING'
             }
             
             # Store in DynamoDB
