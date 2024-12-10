@@ -215,6 +215,7 @@ Resources:
           UNIT_TABLE: !Ref StorageUnitsTable
           POWERTOOLS_SERVICE_NAME: payment-management
           LOG_LEVEL: INFO
+          
       Events:
         ManagePaymentMethod:
           Type: Api
@@ -436,6 +437,8 @@ Resources:
       FunctionName: !Ref RentalEventProcessorFunction
       Principal: "sqs.amazonaws.com"
       SourceArn: !GetAtt RentalEventsQueue.Arn
+
+        
 Outputs:
   UnitBus:
     Description: "Rent Unit Event Bus Output"
