@@ -1,266 +1,144 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>Advanced Storage Management System</title>
-    <style>
-        body { 
-            font-family: Arial, sans-serif; 
-            max-width: 800px; 
-            margin: auto; 
-            padding: 20px;
-        }
-        .unit-card { 
-            border: 1px solid #ddd; 
-            margin: 10px; 
-            padding: 10px; 
-            position: relative;
-        }
-        #status { color: blue; }
-        #error { color: red; }
-        .modal {
-            display: none;
-            position: fixed;
-            z-index: 1;
-            left: 0;
-            top: 0;
-            width: 100%;
-            height: 100%;
-            overflow: auto;
-            background-color: rgba(0,0,0,0.4);
-        }
-        .modal-content {
-            background-color: #fefefe;
-            margin: 15% auto;
-            padding: 20px;
-            border: 1px solid #888;
-            width: 80%;
-            max-width: 500px;
-        }
-        .close {
-            color: #aaa;
-            float: right;
-            font-size: 28px;
-            font-weight: bold;
-            cursor: pointer;
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Storage Service</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .modal {
+      display: none;
+    }
+    .modal.active {
+      display: flex;
+    }
+  </style>
 </head>
-<body>
-    <h1>Storage Management Dashboard</h1>
-    <div id="status"></div>
-    <div id="unitList"></div>
+<body class="font-sans text-gray-800">
 
-    <!-- Booking Modal -->
-    <div id="bookingModal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>Book Storage Unit</h2>
-            <form id="bookingForm">
-                <label for="bookingDays">Number of Months:</label>
-                <input type="number" id="bookingDays" min="1" max="12" required>
-                <div id="discountInfo"></div>
-                <button type="submit">Confirm Booking</button>
-            </form>
-        </div>
+  <!-- Header -->
+  <header class="bg-orange-500 text-white">
+    <div class="container mx-auto flex justify-between items-center py-4 px-6">
+      <a href="#" class="text-lg font-bold">KeyStorage</a>
+      <nav class="flex gap-4">
+        <a href="#rates" class="hover:underline">Our Rates</a>
+        <a href="#about" class="hover:underline">About Us</a>
+        <a href="#contact" class="hover:underline">Contact</a>
+        <a href="#help" class="hover:underline">Help</a>
+      </nav>
+      <div>
+        <a href="#" class="bg-white text-orange-500 px-4 py-2 rounded-lg font-medium">Register</a>
+        <a href="#" class="bg-gray-800 px-4 py-2 rounded-lg font-medium">Login</a>
+      </div>
     </div>
+  </header>
 
-    <!-- Share Access Modal -->
-    <div id="shareAccessModal" class="modal">
-        <div class="modal-content">
-            <span class="close">&times;</span>
-            <h2>Share Unit Access</h2>
-            <form id="shareAccessForm">
-                <label for="sharedEmail">Email Address:</label>
-                <input type="email" id="sharedEmail" required>
-                <button type="submit">Share Access</button>
-            </form>
+  <!-- Storage Unit Sizes -->
+  <section class="py-16 bg-gray-100">
+    <div class="container mx-auto px-6">
+      <h2 class="text-center text-3xl font-bold mb-8">What size storage unit do you need?</h2>
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-6 text-center">
+        <div class="bg-white p-6 rounded-lg shadow-md">
+          <h3 class="text-xl font-medium">1m x 1m</h3>
+          <p>Ideal for small items and boxes.</p>
+          <button class="mt-4 bg-orange-500 text-white px-4 py-2 rounded-lg book-now" data-unit="1m x 1m">Book Now</button>
         </div>
+        <div class="bg-white p-6 rounded-lg shadow-md">
+          <h3 class="text-xl font-medium">2m x 3m</h3>
+          <p>Perfect for furniture and equipment.</p>
+          <button class="mt-4 bg-orange-500 text-white px-4 py-2 rounded-lg book-now" data-unit="2m x 3m">Book Now</button>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow-md">
+          <h3 class="text-xl font-medium">3m x 4m</h3>
+          <p>For multiple large items.</p>
+          <button class="mt-4 bg-orange-500 text-white px-4 py-2 rounded-lg book-now" data-unit="3m x 4m">Book Now</button>
+        </div>
+        <div class="bg-white p-6 rounded-lg shadow-md">
+          <h3 class="text-xl font-medium">4m x 6m</h3>
+          <p>Great for full house storage.</p>
+          <button class="mt-4 bg-orange-500 text-white px-4 py-2 rounded-lg book-now" data-unit="4m x 6m">Book Now</button>
+        </div>
+      </div>
     </div>
+  </section>
 
-    <script>
-        class StorageManagementAPI {
-            static units = [
-                { unit_id: 'UNIT-001', facility_id: 'FAC-A', status: 'Available', size_sq_ft: 50, monthly_rate: 75 },
-                { unit_id: 'UNIT-002', facility_id: 'FAC-B', status: 'Available', size_sq_ft: 100, monthly_rate: 125 },
-                { unit_id: 'UNIT-003', facility_id: 'FAC-A', status: 'Reserved', size_sq_ft: 200, monthly_rate: 200 }
-            ];
+  <!-- Modal -->
+  <div class="modal fixed inset-0 bg-gray-900 bg-opacity-50 items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-lg p-6 max-w-lg w-full">
+      <!-- Step 1: Booking Form -->
+      <div id="booking-form" class="modal-step">
+        <h3 class="text-2xl font-bold mb-4">Book Your Storage Unit</h3>
+        <p class="mb-4" id="modal-unit-text">You are booking: <span class="font-medium"></span></p>
+        <form>
+          <label class="block mb-2 text-sm font-medium">Your Name</label>
+          <input type="text" id="user-name" class="w-full p-2 border border-gray-300 rounded-lg mb-4" placeholder="Enter your name">
+          <label class="block mb-2 text-sm font-medium">Your Email</label>
+          <input type="email" id="user-email" class="w-full p-2 border border-gray-300 rounded-lg mb-4" placeholder="Enter your email">
+          <button type="button" class="bg-orange-500 text-white px-4 py-2 rounded-lg next-step">Proceed to Payment</button>
+          <button type="button" class="bg-gray-500 text-white px-4 py-2 rounded-lg ml-2 close-modal">Cancel</button>
+        </form>
+      </div>
 
-            static async listUnits(filters = {}) {
-                return new Promise((resolve) => {
-                    setTimeout(() => {
-                        resolve({ 
-                            units: this.units.filter(unit => 
-                                (!filters.facilityId || unit.facility_id === filters.facilityId) &&
-                                (!filters.minSize || unit.size_sq_ft >= filters.minSize) &&
-                                (!filters.maxSize || unit.size_sq_ft <= filters.maxSize) &&
-                                (!filters.status || unit.status === filters.status)
-                            )
-                        });
-                    }, 500);
-                });
-            }
+      <!-- Step 2: Payment -->
+      <div id="payment-form" class="modal-step hidden">
+        <h3 class="text-2xl font-bold mb-4">Payment Details</h3>
+        <p class="mb-4">Complete your payment for the unit: <span class="font-medium" id="payment-unit"></span></p>
+        <form>
+          <label class="block mb-2 text-sm font-medium">Card Number</label>
+          <input type="text" id="card-number" class="w-full p-2 border border-gray-300 rounded-lg mb-4" placeholder="1234 5678 9101 1121">
+          <label class="block mb-2 text-sm font-medium">Expiration Date</label>
+          <input type="text" id="card-expiry" class="w-full p-2 border border-gray-300 rounded-lg mb-4" placeholder="MM/YY">
+          <label class="block mb-2 text-sm font-medium">CVV</label>
+          <input type="text" id="card-cvv" class="w-full p-2 border border-gray-300 rounded-lg mb-4" placeholder="123">
+          <button type="submit" class="bg-green-500 text-white px-4 py-2 rounded-lg">Pay Now</button>
+          <button type="button" class="bg-gray-500 text-white px-4 py-2 rounded-lg ml-2 close-modal">Cancel</button>
+        </form>
+      </div>
+    </div>
+  </div>
 
-            static async bookUnit(unitId, months) {
-                return new Promise((resolve, reject) => {
-                    const unitIndex = this.units.findIndex(u => u.unit_id === unitId);
-                    if (unitIndex === -1) {
-                        reject(new Error('Unit not found'));
-                        return;
-                    }
+  <script>
+    // Modal functionality
+    const modal = document.querySelector('.modal');
+    const bookNowButtons = document.querySelectorAll('.book-now');
+    const closeModalButtons = document.querySelectorAll('.close-modal');
+    const nextStepButton = document.querySelector('.next-step');
+    const bookingForm = document.getElementById('booking-form');
+    const paymentForm = document.getElementById('payment-form');
+    const modalUnitText = document.getElementById('modal-unit-text');
+    const paymentUnitText = document.getElementById('payment-unit');
 
-                    // Calculate discount
-                    let discountPercentage = 0;
-                    if (months >= 6) {
-                        discountPercentage = months >= 12 ? 20 : 10;
-                    }
+    // Open modal and set the unit
+    bookNowButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        const unit = button.getAttribute('data-unit');
+        modalUnitText.querySelector('span').textContent = unit;
+        paymentUnitText.textContent = unit;
+        modal.classList.add('active');
+        bookingForm.classList.remove('hidden');
+        paymentForm.classList.add('hidden');
+      });
+    });
 
-                    const originalRate = this.units[unitIndex].monthly_rate;
-                    const totalCost = originalRate * months * (1 - discountPercentage/100);
+    // Proceed to payment
+    nextStepButton.addEventListener('click', () => {
+      bookingForm.classList.add('hidden');
+      paymentForm.classList.remove('hidden');
+    });
 
-                    // Update unit status
-                    this.units[unitIndex].status = 'Booked';
+    // Close modal
+    closeModalButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        modal.classList.remove('active');
+      });
+    });
 
-                    setTimeout(() => {
-                        resolve({
-                            rental_id: `RENTAL-${Math.random().toString(36).substr(2, 9)}`,
-                            unit_id: unitId,
-                            months: months,
-                            original_total: originalRate * months,
-                            total_cost: totalCost,
-                            discount_percentage: discountPercentage
-                        });
-                    }, 800);
-                });
-            }
-
-            static async shareUnitAccess(rentalId, email) {
-                return new Promise((resolve) => {
-                    setTimeout(() => {
-                        resolve({
-                            message: `Access shared for rental ${rentalId} to ${email}`,
-                            shared_email: email
-                        });
-                    }, 400);
-                });
-            }
-        }
-
-        let currentUnitId = null;
-
-        async function initializeApp() {
-            const unitList = document.getElementById('unitList');
-            const statusMessage = document.getElementById('status');
-
-            try {
-                const { units } = await StorageManagementAPI.listUnits();
-                unitList.innerHTML = units.map(unit => `
-                    <div class="unit-card" id="unit-${unit.unit_id}">
-                        <h3>Unit: ${unit.unit_id}</h3>
-                        <p>Size: ${unit.size_sq_ft} sq ft</p>
-                        <p>Monthly Rate: $${unit.monthly_rate}</p>
-                        <p id="status-${unit.unit_id}">Status: ${unit.status}</p>
-                        <div>
-                            <button onclick="openBookingModal('${unit.unit_id}')">Book Unit</button>
-                            <button onclick="shareAccessModal('${unit.unit_id}')">Share Access</button>
-                        </div>
-                    </div>
-                `).join('');
-
-                setupModalHandlers();
-            } catch (error) {
-                statusMessage.textContent = `Error: ${error.message}`;
-            }
-        }
-
-        function setupModalHandlers() {
-            const bookingModal = document.getElementById('bookingModal');
-            const shareAccessModal = document.getElementById('shareAccessModal');
-            const closeButtons = document.getElementsByClassName('close');
-
-            // Close modal when clicking (x)
-            for (let closeBtn of closeButtons) {
-                closeBtn.onclick = function() {
-                    bookingModal.style.display = 'none';
-                    shareAccessModal.style.display = 'none';
-                }
-            }
-
-            // Booking form submission
-            const bookingForm = document.getElementById('bookingForm');
-            bookingForm.onsubmit = async function(e) {
-                e.preventDefault();
-                const months = document.getElementById('bookingDays').value;
-                
-                try {
-                    const result = await StorageManagementAPI.bookUnit(currentUnitId, parseInt(months));
-                    
-                    // Update status
-                    document.getElementById(`status-${currentUnitId}`).textContent = `Status: Booked`;
-                    
-                    // Show booking details
-                    const statusMessage = document.getElementById('status');
-                    statusMessage.textContent = `Booked Unit ${currentUnitId} for ${months} months. 
-                        Original Total: $${result.original_total.toFixed(2)}
-                        Discount: ${result.discount_percentage}%
-                        Final Total: $${result.total_cost.toFixed(2)}`;
-                    
-                    bookingModal.style.display = 'none';
-                } catch (error) {
-                    alert(`Booking Failed: ${error.message}`);
-                }
-            };
-
-            // Share access form submission
-            const shareAccessForm = document.getElementById('shareAccessForm');
-            shareAccessForm.onsubmit = async function(e) {
-                e.preventDefault();
-                const email = document.getElementById('sharedEmail').value;
-                
-                try {
-                    const result = await StorageManagementAPI.shareUnitAccess(
-                        `RENTAL-${currentUnitId}`, 
-                        email
-                    );
-                    
-                    const statusMessage = document.getElementById('status');
-                    statusMessage.textContent = result.message;
-                    
-                    shareAccessModal.style.display = 'none';
-                } catch (error) {
-                    alert(`Share Access Failed: ${error.message}`);
-                }
-            };
-
-            // Booking days input handler for discount
-            const bookingDays = document.getElementById('bookingDays');
-            const discountInfo = document.getElementById('discountInfo');
-            bookingDays.oninput = function() {
-                const months = parseInt(this.value);
-                let discountMessage = '';
-                
-                if (months >= 12) {
-                    discountMessage = '20% discount applied for booking 12+ months!';
-                } else if (months >= 6) {
-                    discountMessage = '10% discount applied for booking 6-11 months!';
-                }
-                
-                discountInfo.textContent = discountMessage;
-            };
-        }
-
-        function openBookingModal(unitId) {
-            currentUnitId = unitId;
-            const bookingModal = document.getElementById('bookingModal');
-            bookingModal.style.display = 'block';
-        }
-
-        function shareAccessModal(unitId) {
-            currentUnitId = unitId;
-            const shareAccessModal = document.getElementById('shareAccessModal');
-            shareAccessModal.style.display = 'block';
-        }
-
-        document.addEventListener('DOMContentLoaded', initializeApp);
-    </script>
+    // Close modal when clicking outside
+    modal.addEventListener('click', (e) => {
+      if (e.target === modal) {
+        modal.classList.remove('active');
+      }
+    });
+  </script>
 </body>
 </html>

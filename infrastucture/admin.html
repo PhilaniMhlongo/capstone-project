@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Storage Service</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .modal {
+      display: none;
+    }
+    .modal.active {
+      display: flex;
+    }
+  </style>
+</head>
+<body class="font-sans text-gray-800">
+
+  <!-- Header -->
+  <header class="bg-orange-500 text-white">
+    <div class="container mx-auto flex justify-between items-center py-4 px-6">
+      <a href="#" class="text-lg font-bold">KeyStorage</a>
+      <nav class="flex gap-4">
+        <a href="#rates" class="hover:underline">Our Rates</a>
+        <a href="#about" class="hover:underline">About Us</a>
+        <a href="#contact" class="hover:underline">Contact</a>
+        <a href="#help" class="hover:underline">Help</a>
+      </nav>
+      <div>
+        <a href="#" class="bg-white text-orange-500 px-4 py-2 rounded-lg font-medium">Register</a>
+        <a href="#" class="bg-gray-800 px-4 py-2 rounded-lg font-medium">Login</a>
+      </div>
+    </div>
+  </header>
+
+  <!-- Admin Section -->
+  <section class="py-16">
+    <div class="container mx-auto px-6">
+      <h2 class="text-center text-3xl font-bold mb-8">Admin Section</h2>
+      <div class="bg-white p-6 rounded-lg shadow-md">
+        <h3 class="text-xl font-bold mb-4">Add Storage Unit</h3>
+        <form id="add-storage-form" class="space-y-4">
+          <div>
+            <label class="block text-sm font-medium mb-1">Storage Unit Size</label>
+            <input type="text" id="new-unit-size" class="w-full p-2 border border-gray-300 rounded-lg" placeholder="Enter size (e.g., 5m x 5m)">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">Description</label>
+            <textarea id="new-unit-desc" class="w-full p-2 border border-gray-300 rounded-lg" rows="2" placeholder="Enter description"></textarea>
+          </div>
+          <button type="button" class="bg-orange-500 text-white px-4 py-2 rounded-lg" id="add-storage-btn">Add Storage Unit</button>
+        </form>
+      </div>
+
+      <div class="bg-white p-6 rounded-lg shadow-md mt-8">
+        <h3 class="text-xl font-bold mb-4">Edit Storage Units</h3>
+        <ul id="storage-list" class="space-y-4">
+          <!-- Storage units dynamically added here -->
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- Storage Unit Sizes -->
+  <section class="py-16 bg-gray-100">
+    <div class="container mx-auto px-6">
+      <h2 class="text-center text-3xl font-bold mb-8">What size storage unit do you need?</h2>
+      <div id="storage-units" class="grid grid-cols-1 md:grid-cols-4 gap-6 text-center">
+        <!-- Units dynamically rendered here -->
+      </div>
+    </div>
+  </section>
+
+  <!-- Modal for Editing Storage -->
+  <div class="modal fixed inset-0 bg-gray-900 bg-opacity-50 items-center justify-center z-50">
+    <div class="bg-white rounded-lg shadow-lg p-6 max-w-lg w-full">
+      <h3 class="text-2xl font-bold mb-4">Edit Storage Unit</h3>
+      <form id="edit-storage-form">
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-1">Storage Unit Size</label>
+          <input type="text" id="edit-unit-size" class="w-full p-2 border border-gray-300 rounded-lg">
+        </div>
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-1">Description</label>
+          <textarea id="edit-unit-desc" class="w-full p-2 border border-gray-300 rounded-lg"></textarea>
+        </div>
+        <button type="button" class="bg-orange-500 text-white px-4 py-2 rounded-lg" id="save-storage-btn">Save Changes</button>
+        <button type="button" class="bg-gray-500 text-white px-4 py-2 rounded-lg ml-2 close-modal">Cancel</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const storageUnitsContainer = document.getElementById('storage-units');
+    const storageList = document.getElementById('storage-list');
+    const modal = document.querySelector('.modal');
+    const closeModalButtons = document.querySelectorAll('.close-modal');
+    const saveStorageBtn = document.getElementById('save-storage-btn');
+
+    let storageUnits = [
+      { size: '1m x 1m', desc: 'Ideal for small items and boxes.' },
+      { size: '2m x 3m', desc: 'Perfect for furniture and equipment.' },
+      { size: '3m x 4m', desc: 'For multiple large items.' },
+      { size: '4m x 6m', desc: 'Great for full house storage.' },
+    ];
+
+    // Render Storage Units
+    function renderStorageUnits() {
+      storageUnitsContainer.innerHTML = '';
+      storageList.innerHTML = '';
+
+      storageUnits.forEach((unit, index) => {
+        // Display on main page
+        const div = document.createElement('div');
+        div.classList.add('bg-white', 'p-6', 'rounded-lg', 'shadow-md');
+        div.innerHTML = `
+          <h3 class="text-xl font-medium">${unit.size}</h3>
+          <p>${unit.desc}</p>
+          <button class="mt-4 bg-orange-500 text-white px-4 py-2 rounded-lg book-now" data-unit="${unit.size}">Book Now</button>
+        `;
+        storageUnitsContainer.appendChild(div);
+
+        // Display in admin section
+        const li = document.createElement('li');
+        li.classList.add('flex', 'justify-between', 'items-center', 'border-b', 'pb-2', 'mb-2');
+        li.innerHTML = `
+          <div>
+            <p class="font-medium">${unit.size}</p>
+            <p class="text-sm text-gray-500">${unit.desc}</p>
+          </div>
+          <button class="bg-blue-500 text-white px-4 py-2 rounded-lg edit-unit" data-index="${index}">Edit</button>
+        `;
+        storageList.appendChild(li);
+      });
+
+      // Attach Edit Event
+      document.querySelectorAll('.edit-unit').forEach(button => {
+        button.addEventListener('click', (e) => {
+          const index = e.target.getAttribute('data-index');
+          openEditModal(index);
+        });
+      });
+    }
+
+    // Add New Storage Unit
+    document.getElementById('add-storage-btn').addEventListener('click', () => {
+      const size = document.getElementById('new-unit-size').value.trim();
+      const desc = document.getElementById('new-unit-desc').value.trim();
+
+      if (!size || !desc) {
+        alert('Please provide all fields.');
+        return;
+      }
+
+      storageUnits.push({ size, desc });
+      renderStorageUnits();
+
+      // Clear form
+      document.getElementById('new-unit-size').value = '';
+      document.getElementById('new-unit-desc').value = '';
+    });
+
+    // Open Edit Modal
+    function openEditModal(index) {
+      const unit = storageUnits[index];
+      document.getElementById('edit-unit-size').value = unit.size;
+      document.getElementById('edit-unit-desc').value = unit.desc;
+
+      saveStorageBtn.setAttribute('data-index', index);
+      modal.classList.add('active');
+    }
+
+    // Save Edited Storage Unit
+    saveStorageBtn.addEventListener('click', () => {
+      const index = saveStorageBtn.getAttribute('data-index');
+      const size = document.getElementById('edit-unit-size').value.trim();
+      const desc = document.getElementById('edit-unit-desc').value.trim();
+
+      if (!size || !desc) {
+        alert('Please provide all fields.');
+        return;
+      }
+
+      storageUnits[index] = { size, desc };
+      renderStorageUnits();
+      modal.classList.remove('active');
+    });
+
+    // Close Modal
+    closeModalButtons.forEach(button => {
+      button.addEventListener('click', () => {
+        modal.classList.remove('active');
+      });
+    });
+
+    // Initial Render
+    renderStorageUnits();
+  </script>
+</body>
+</html>

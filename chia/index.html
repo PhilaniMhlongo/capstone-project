@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Storage Booking App</title>
+</head>
+<body class="bg-blue-50 text-gray-800">
+
+  <!-- Header -->
+  <header class="bg-blue-600 text-white p-4 flex justify-between items-center">
+    <h1 class="text-xl font-bold">Secure Self Storage</h1>
+    <div>
+      <button id="loginBtn" class="bg-blue-800 px-4 py-2 rounded hover:bg-blue-700">Login</button>
+      <button id="logoutBtn" class="bg-red-600 px-4 py-2 rounded hover:bg-red-500 hidden">Logout</button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="p-4">
+    <!-- Units -->
+    <section id="unitCards" class="grid grid-cols-1 md:grid-cols-3 gap-4 my-4">
+      <!-- Units will be dynamically populated here -->
+    </section>
+
+    <!-- Booking Form -->
+    <section id="bookingFormContainer" class="hidden bg-white p-4 rounded shadow-md">
+      <h2 class="text-lg font-bold mb-4">Book a Unit</h2>
+      <form id="bookingForm" class="flex flex-col gap-4">
+        <select id="unitSelect" class="p-2 border rounded" required></select>
+        <div>
+          <label class="block">Duration</label>
+          <input type="radio" name="duration" value="1" required> 1 Month
+          <input type="radio" name="duration" value="6" required> 6 Months
+          <input type="radio" name="duration" value="12" required> 1 Year
+        </div>
+        <input type="date" id="startDate" class="p-2 border rounded" required>
+        <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Book Now</button>
+      </form>
+    </section>
+
+    <!-- Login Modal -->
+    <div id="loginModal" class="hidden fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center">
+      <div class="bg-white p-6 rounded shadow-md">
+        <h2 class="text-lg font-bold mb-4">Login</h2>
+        <form id="loginForm" class="flex flex-col gap-4">
+          <input id="username" type="text" placeholder="Username" class="p-2 border rounded" required>
+          <input id="password" type="password" placeholder="Password" class="p-2 border rounded" required>
+          <button class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Login</button>
+        </form>
+      </div>
+    </div>
+
+    <section id="paymentContainer" class="hidden bg-white p-4 rounded shadow-md">
+        <h2 class="text-lg font-bold mb-4">Payment Details</h2>
+        <form id="paymentForm" class="flex flex-col gap-4">
+          <input type="text" id="cardHolderName" class="p-2 border rounded" placeholder="Cardholder Name" required>
+          <input type="text" id="cardNumber" class="p-2 border rounded" placeholder="Card Number" maxlength="16" required>
+          <div class="flex gap-2">
+            <input type="text" id="expiryDate" class="p-2 border rounded w-1/2" placeholder="MM/YY" required>
+            <input type="text" id="cvv" class="p-2 border rounded w-1/2" placeholder="CVV" maxlength="3" required>
+          </div>
+          <button type="button" id="submitPayment" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Submit Payment</button>
+        </form>
+      </section>
+  
+      <!-- Response Message -->
+      <div id="responseMessage" class="hidden fixed top-4 right-4 bg-green-500 text-white p-2 rounded shadow-md"></div>
+    </main>
+  
+
+    <!-- Response Message -->
+    <div id="responseMessage" class="hidden fixed top-4 right-4 bg-green-500 text-white p-2 rounded shadow-md"></div>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const loginBtn = document.getElementById('loginBtn');
+      const logoutBtn = document.getElementById('logoutBtn');
+      const loginModal = document.getElementById('loginModal');
+      const loginForm = document.getElementById('loginForm');
+      const bookingFormContainer = document.getElementById('bookingFormContainer');
+      const bookingForm = document.getElementById('bookingForm');
+      const unitSelect = document.getElementById('unitSelect');
+      const unitCards = document.getElementById('unitCards');
+      const responseMessage = document.getElementById('responseMessage');
+      const API_BASE_URL = 'https://yh2imbp562.execute-api.eu-west-1.amazonaws.com/prod';
+      let idToken = null;
+
+      // Login Functionality
+      loginBtn.addEventListener('click', () => {
+        loginModal.classList.remove('hidden');
+      });
+
+      loginForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const username = document.getElementById('username').value;
+        const password = document.getElementById('password').value;
+        try {
+          const response = await fetch('https://cognito-idp.eu-west-1.amazonaws.com/', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/x-amz-json-1.1',
+              'X-Amz-Target': 'AWSCognitoIdentityProviderService.InitiateAuth',
+            },
+            body: JSON.stringify({
+              AuthFlow: 'USER_PASSWORD_AUTH',
+              ClientId: '1560lns5rp8b2rvh3srh6icllb',
+              AuthParameters: { USERNAME: username, PASSWORD: password },
+            }),
+          });
+
+          if (response.ok) {
+            const data = await response.json();
+            idToken = data.AuthenticationResult.IdToken;
+            sessionStorage.setItem('idToken', idToken);
+
+            loginModal.classList.add('hidden');
+            loginBtn.classList.add('hidden');
+            logoutBtn.classList.remove('hidden');
+            loadAvailableUnits();
+            showMessage('Logged in successfully!', 'success');
+          } else {
+            showMessage('Login failed. Please check your credentials.', 'error');
+          }
+        } catch (error) {
+          console.error(error);
+          showMessage('Network error during login.', 'error');
+        }
+      });
+
+      logoutBtn.addEventListener('click', () => {
+        idToken = null;
+        sessionStorage.removeItem('idToken');
+        loginBtn.classList.remove('hidden');
+        logoutBtn.classList.add('hidden');
+        unitCards.innerHTML = '';
+        showMessage('Logged out successfully', 'success');
+      });
+
+      // Load Available Units
+      async function loadAvailableUnits() {
+        if (!idToken) return alert('Please log in first');
+        try {
+          const response = await fetch(`${API_BASE_URL}/units?status=Available&page=1&limit=10`, {
+            method: 'GET',
+            headers: { Authorization: `Bearer ${idToken}` },
+          });
+          const data = await response.json();
+          unitCards.innerHTML = '';
+          unitSelect.innerHTML = '';
+          if (data.units && data.units.length > 0) {
+            data.units.forEach(unit => {
+              const card = document.createElement('div');
+              card.className = 'bg-white p-4 rounded shadow-md';
+              card.innerHTML = `
+              <div class="bg-white p-6 rounded-lg shadow-md">
+                <h3 class="text-lg font-bold">Unit ${unit.unit_id.slice(0, 8)}</h3>
+                <p>Size: ${unit.size}</p>
+                <p>Location: ${unit.location}</p>
+                <button class="bg-blue-600 text-white px-4 py-2 mt-2 rounded hover:bg-blue-700 book-btn" data-unit-id="${unit.unit_id}">Book Now</button>
+                <button class="mt-4 bg-orange-500 text-white px-4 py-2 rounded-lg book-now" data-unit="4m x 6m">Cancel</button>
+        </div>
+              `;
+              unitCards.appendChild(card);
+
+              // Populate unitSelect dropdown
+              const option = document.createElement('option');
+              option.value = unit.unit_id;
+              option.textContent = `Unit ${unit.unit_id.slice(0, 8)} - ${unit.size}`;
+              unitSelect.appendChild(option);
+            });
+
+            // Add "Book Now" button functionality
+            document.querySelectorAll('.book-btn').forEach(button => {
+              button.addEventListener('click', (e) => {
+                const unitId = e.target.getAttribute('data-unit-id');
+                unitSelect.value = unitId;
+                bookingFormContainer.classList.remove('hidden');
+              });
+            });
+          } else {
+            unitCards.innerHTML = '<p>No units available</p>';
+          }
+        } catch (error) {
+          console.error(error);
+          unitCards.innerHTML = '<p>Error loading units</p>';
+        }
+      }
+
+
+       // Proceed to Payment
+       proceedToPaymentBtn.addEventListener('click', () => {
+        const unitSelect = document.getElementById('unitSelect');
+        const duration = bookingForm.querySelector('input[name="duration"]:checked');
+        const startDate = document.getElementById('startDate').value;
+
+        if (!unitSelect.value || !duration || !startDate) {
+          showMessage('Please fill out all fields in the booking form', 'error');
+          return;
+        }
+
+        selectedUnit = {
+          unitId: unitSelect.value,
+          duration: duration.value,
+          startDate: startDate
+        };
+
+        bookingFormContainer.classList.add('hidden');
+        paymentContainer.classList.remove('hidden');
+      });
+
+      // Submit Payment
+      submitPaymentBtn.addEventListener('click', async () => {
+        const cardHolderName = document.getElementById('cardHolderName').value;
+        const cardNumber = document.getElementById('cardNumber').value;
+        const expiryDate = document.getElementById('expiryDate').value;
+        const cvv = document.getElementById('cvv').value;
+
+        if (!cardHolderName || !cardNumber || !expiryDate || !cvv) {
+          showMessage('Please fill out all payment details', 'error');
+          return;
+        }
+
+        try {
+          // Simulate payment processing
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+
+          // Simulate booking API call
+          if (idToken && selectedUnit) {
+            const response = await fetch('https://your-api-endpoint/book-unit', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${idToken}`
+              },
+              body: JSON.stringify({
+                unitId: selectedUnit.unitId,
+                duration: selectedUnit.duration,
+                startDate: selectedUnit.startDate,
+                paymentDetails: {
+                  cardHolderName,
+                  cardNumber,
+                  expiryDate,
+                  cvv
+                }
+              })
+            });
+
+            if (response.ok) {
+              showMessage('Payment successful and unit booked!', 'success');
+              paymentContainer.classList.add('hidden');
+              selectedUnit = null;
+            } else {
+              throw new Error('Booking failed');
+            }
+          }
+        } catch (error) {
+          console.error(error);
+          showMessage('Payment failed. Please try again.', 'error');
+        }
+      });
+      
+
+      // Show Messages
+      function showMessage(message, type) {
+        responseMessage.textContent = message;
+        responseMessage.className = `fixed top-4 right-4 p-2 rounded shadow-md text-white ${type === 'success' ? 'bg-green-500' : 'bg-red-500'}`;
+        responseMessage.classList.remove('hidden');
+        setTimeout(() => responseMessage.classList.add('hidden'), 5000);
+      }
+    });
+  </script>
+</body>
+</html>

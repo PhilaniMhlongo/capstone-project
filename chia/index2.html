@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <title>Storage Booking App</title>
+</head>
+<body class="bg-blue-50 text-gray-800">
+
+  <!-- Header -->
+  <header class="bg-blue-600 text-white p-4 flex justify-between items-center">
+    <h1 class="text-xl font-bold">Secure Self Storage</h1>
+    <div>
+      <button id="loginBtn" class="bg-blue-800 px-4 py-2 rounded hover:bg-blue-700">Login</button>
+      <button id="logoutBtn" class="bg-red-600 px-4 py-2 rounded hover:bg-red-500 hidden">Logout</button>
+    </div>
+  </header>
+
+  <!-- Main Content -->
+  <main class="p-4">
+    <!-- Units -->
+    <section id="unitCards" class="grid grid-cols-1 md:grid-cols-3 gap-4 my-4">
+      <!-- Units will be dynamically populated here -->
+    </section>
+
+    <!-- Booking Form -->
+    <section id="bookingFormContainer" class="hidden bg-white p-4 rounded shadow-md">
+      <h2 class="text-lg font-bold mb-4">Book a Unit</h2>
+      <form id="bookingForm" class="flex flex-col gap-4">
+        <select id="unitSelect" class="p-2 border rounded" required></select>
+        <div>
+          <label class="block">Duration</label>
+          <input type="radio" name="duration" value="1" required> 1 Month
+          <input type="radio" name="duration" value="6" required> 6 Months
+          <input type="radio" name="duration" value="12" required> 1 Year
+        </div>
+        <input type="date" id="startDate" class="p-2 border rounded" required>
+        <button type="button" id="proceedToPayment" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">Proceed to Payment</button>
+      </form>
+    </section>
+
+    <!-- Payment Section -->
+    <section id="paymentContainer" class="hidden bg-white p-4 rounded shadow-md">
+      <h2 class="text-lg font-bold mb-4">Payment Details</h2>
+      <form id="paymentForm" class="flex flex-col gap-4">
+        <input type="text" id="cardHolderName" class="p-2 border rounded" placeholder="Cardholder Name" required>
+        <input type="text" id="cardNumber" class="p-2 border rounded" placeholder="Card Number" maxlength="16" required>
+        <div class="flex gap-2">
+          <input type="text" id="expiryDate" class="p-2 border rounded w-1/2" placeholder="MM/YY" required>
+          <input type="text" id="cvv" class="p-2 border rounded w-1/2" placeholder="CVV" maxlength="3" required>
+        </div>
+        <button type="button" id="submitPayment" class="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">Submit Payment</button>
+      </form>
+    </section>
+
+    <!-- Response Message -->
+    <div id="responseMessage" class="hidden fixed top-4 right-4 bg-green-500 text-white p-2 rounded shadow-md"></div>
+  </main>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const loginBtn = document.getElementById('loginBtn');
+      const logoutBtn = document.getElementById('logoutBtn');
+      const bookingFormContainer = document.getElementById('bookingFormContainer');
+      const bookingForm = document.getElementById('bookingForm');
+      const paymentContainer = document.getElementById('paymentContainer');
+      const proceedToPaymentBtn = document.getElementById('proceedToPayment');
+      const submitPaymentBtn = document.getElementById('submitPayment');
+      const responseMessage = document.getElementById('responseMessage');
+
+      let selectedUnit = null;
+      let idToken = sessionStorage.getItem('idToken');
+
+      // Proceed to Payment
+      proceedToPaymentBtn.addEventListener('click', () => {
+        const unitSelect = document.getElementById('unitSelect');
+        const duration = bookingForm.querySelector('input[name="duration"]:checked');
+        const startDate = document.getElementById('startDate').value;
+
+        if (!unitSelect.value || !duration || !startDate) {
+          showMessage('Please fill out all fields in the booking form', 'error');
+          return;
+        }
+
+        selectedUnit = {
+          unitId: unitSelect.value,
+          duration: duration.value,
+          startDate: startDate
+        };
+
+        bookingFormContainer.classList.add('hidden');
+        paymentContainer.classList.remove('hidden');
+      });
+
+      // Submit Payment
+      submitPaymentBtn.addEventListener('click', async () => {
+        const cardHolderName = document.getElementById('cardHolderName').value;
+        const cardNumber = document.getElementById('cardNumber').value;
+        const expiryDate = document.getElementById('expiryDate').value;
+        const cvv = document.getElementById('cvv').value;
+
+        if (!cardHolderName || !cardNumber || !expiryDate || !cvv) {
+          showMessage('Please fill out all payment details', 'error');
+          return;
+        }
+
+        try {
+          // Simulate payment processing
+          await new Promise((resolve) => setTimeout(resolve, 2000));
+
+          // Simulate booking API call
+          if (idToken && selectedUnit) {
+            const response = await fetch('https://your-api-endpoint/book-unit', {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${idToken}`
+              },
+              body: JSON.stringify({
+                unitId: selectedUnit.unitId,
+                duration: selectedUnit.duration,
+                startDate: selectedUnit.startDate,
+                paymentDetails: {
+                  cardHolderName,
+                  cardNumber,
+                  expiryDate,
+                  cvv
+                }
+              })
+            });
+
+            if (response.ok) {
+              showMessage('Payment successful and unit booked!', 'success');
+              paymentContainer.classList.add('hidden');
+              selectedUnit = null;
+            } else {
+              throw new Error('Booking failed');
+            }
+          }
+        } catch (error) {
+          console.error(error);
+          showMessage('Payment failed. Please try again.', 'error');
+        }
+      });
+
+      // Show Messages
+      function showMessage(message, type) {
+        responseMessage.textContent = message;
+        responseMessage.className = `fixed top-4 right-4 p-2 rounded shadow-md text-white ${type === 'success' ? 'bg-green-500' : 'bg-red-500'}`;
+        responseMessage.classList.remove('hidden');
+        setTimeout(() => responseMessage.classList.add('hidden'), 5000);
+      }
+    });
+  </script>
+</body>
+</html>
