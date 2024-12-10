@@ -217,7 +217,7 @@ def process_recurring_billing(event, context):
     
     # Scan for active rentals with recurring billing
     response = rentals_table.scan(
-        FilterExpression='billing_option IN (:monthly, :yearly) AND status = :active',
+        FilterExpression='billing_option IN (:monthly, :yearly) AND Rentalstatus = :active',
         ExpressionAttributeValues={
             ':monthly': 'monthly',
             ':yearly': 'yearly',
