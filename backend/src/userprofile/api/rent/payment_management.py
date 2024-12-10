@@ -165,7 +165,7 @@ def process_pre_payment(event, context):
                     'rental_id': rental_id,
                     'amount': amount,
                     'payment_type': 'pre-pay',
-                    'payment_method_id': payment_methods[0]['payment_method_id'],  # Assuming first payment method
+                    'payment_method': payment_methods[0]['type'],  # Assuming first payment method
                     'timestamp': datetime.now().isoformat(),
                     'Paymentstatus': 'Successful'
                 }
