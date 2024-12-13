@@ -11,8 +11,6 @@ logger = Logger()
 tracer = Tracer(service="StorageApp")
 rentals_table = os.getenv('RENTALS_TABLE')
 payments_table = os.getenv('PAYMENTS_TABLE')
-sns_client = boto3.client('sns')
-# PAYMENT_NOTIFICATION_TOPIC = os.getenv('NOTIFICATION_TOPICS')
 unit_table = os.getenv('UNIT_TABLE')
 dynamodb = boto3.resource('dynamodb')
 rentals_table = dynamodb.Table(rentals_table)
@@ -180,13 +178,6 @@ def process_pre_payment(event, context):
             }
 
         logger.info(f"Pre-payment processed for user {user_id}, unit {unit_id}")
-        user_email = event['requestContext']['authorizer']['claims']['email']
-        send_payment_notification(user_id, {
-        'amount': amount,
-        'payment_type': 'pre-payment',
-        'Paymentstatus': 'Successful',
-        'timestamp': datetime.now().isoformat()},user_email)
-      
         return {
             "statusCode": 200,
             "body": json.dumps({
@@ -263,13 +254,7 @@ def process_recurring_billing(event, context):
                 },
                 ReturnValues='UPDATED_NEW'
             )
-    user_email = event['requestContext']['authorizer']['claims']['email']
-    send_payment_notification(user_id, {
-        'amount': amount,
-        'payment_type': 'recurring',
-        'Paymentstatus': 'Successful',
-        'timestamp': datetime.now().isoformat()
-    },user_email)
+    
     return {
         "statusCode": 200,
         "body": json.dumps({"message": "Recurring billing processed"})
@@ -403,49 +388,6 @@ def cancel_rental(event, context):
             "effective_date": effective_date.isoformat()
         })
     }
-
-
-def send_payment_notification(user_id, payment_details, user_email):
-    """
-    Send payment notification via SNS using user's email
-    """
-    try:
-        message = f"""Payment Notification
-        User ID: {user_id}
-        Amount: R {payment_details['amount']}
-        Type: {payment_details['payment_type']}
-        Status: {payment_details['Paymentstatus']}
-        Timestamp: {payment_details['timestamp']}
-        """
-        
-        # Create an SNS topic specifically for this user if it doesn't exist
-        topic_name = f"user-payment-{user_id}"
-        
-        try:
-            # Create a unique SNS topic for the user
-            topic_arn = sns_client.create_topic(Name=topic_name)['TopicArn']
-            
-            # Subscribe user's email to the topic
-            sns_client.subscribe(
-                TopicArn=topic_arn,
-                Protocol='email',
-                Endpoint=user_email
-            )
-        except Exception as topic_error:
-            logger.error(f"Error creating user topic: {topic_error}")
-            # Fallback to a default notification method
-            return
-        
-        # Publish the message to the user-specific topic
-        sns_client.publish(
-            TopicArn=topic_arn,
-            Message=message,
-            Subject='Storage Unit Payment Notification'
-        )
-        logger.info(f"Payment notification sent for user {user_id}")
-    except Exception as e:
-        logger.error(f"Failed to send payment notification: {str(e)}")
-
 
 @tracer.capture_lambda_handler
 def lambda_handler(event, context):
